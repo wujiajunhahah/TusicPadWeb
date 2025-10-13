@@ -8,6 +8,7 @@
 - 上半区画布捕获 Pencil 的 `x / y / pressure` 并节流到约 60fps 发送至 Strudel，视觉尾迹为柔和红光点阵。
 - 下半区嵌入官方 Strudel REPL，真实生成音频与可视化，无需任何自建合成器。
 - Strudel REPL 默认载入 **TusicPad Patch**（底鼓 / 旋律 / hi-hat + 笔压映射），按下 Run 即可听到节奏。
+- Strudel 官方已将编辑器迁至根路径 `https://strudel.cc/`（详见 [Strudel 官网主页](https://strudel.cc/) 发布说明）；外壳 iframe 直接访问根域并携带 `?code=` 片段可避免旧版 `/repl` 产生的 404。
 - 顶部提供 Nothing 风状态条与 `CLEAR CANVAS` 控件，覆盖式开始面板提醒用户解锁音频。
 
 ---
@@ -87,7 +88,8 @@ $: stack(
 
 ## 常见问题（Troubleshooting）
 - 没有声音：必须在 REPL 里点一次 **Run**（iOS 音频策略要求用户手势），确认设备未静音并允许声音播放。
-- 进入 REPL 后还是空白：点击地址栏刷新或手动打开 `https://strudel.cc/repl`。若页面整体 404，请确认已启用 GitHub Pages。
+- 进入 REPL 后还是空白：点击地址栏刷新或手动打开 `https://strudel.cc/`。若页面整体 404，请确认已启用 GitHub Pages。
+- iframe 显示 nginx 404：Strudel 已弃用旧路径 `/repl`，请确保外壳加载的是 `https://strudel.cc/`（可携带 `?code=` 查询参数分享片段）。
 - 压力值恒定：部分第三方触控笔不提供 pressure，系统会回退到 `0.35`，仍可控制横纵向。
 - 状态 Pill 未变绿：确保使用 Apple Pencil 并且在画布区域按压；鼠标不会触发传输。
 - 画面太亮或想重绘：点击顶部「清空画布」即可重置视觉尾迹，音频不会被中断。
