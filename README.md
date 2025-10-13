@@ -7,6 +7,7 @@
 - 全站采用官方 `NDot` 字体（通过 CDN 载入）搭配 `Inter` 正文，保留 Nothing 标志性点阵排版。
 - 上半区画布捕获 Pencil 的 `x / y / pressure` 并节流到约 60fps 发送至 Strudel，视觉尾迹为柔和红光点阵。
 - 下半区嵌入官方 Strudel REPL，真实生成音频与可视化，无需任何自建合成器。
+- Strudel REPL 默认载入 **TusicPad Patch**（底鼓 / 旋律 / hi-hat + 笔压映射），按下 Run 即可听到节奏。
 - 顶部提供 Nothing 风状态条与 `CLEAR CANVAS` 控件，覆盖式开始面板提醒用户解锁音频。
 
 ---
@@ -25,7 +26,7 @@
 
 ## 使用流程
 1. 打开页面后点击「Start」，覆盖层会消失并提示在 REPL 内点一次 **Run**。
-2. 将下列 Strudel 接收片段粘贴进 REPL，点 **Run**。
+2. 下方 Strudel REPL 已自动填入 TusicPad Patch，直接点击 **Run** 解锁音频。
 3. 返回上半区用 Apple Pencil 绘制，观察顶部状态条变为红色并显示 `LIVE`（实时传输中）。
 4. 随时点击「Clear Canvas」重置尾迹，不影响音频映射。
 
@@ -86,6 +87,7 @@ $: stack(
 
 ## 常见问题（Troubleshooting）
 - 没有声音：必须在 REPL 里点一次 **Run**（iOS 音频策略要求用户手势），确认设备未静音并允许声音播放。
+- 进入 REPL 后还是空白：点击地址栏刷新或手动打开 `https://strudel.cc/repl`。若页面整体 404，请确认已启用 GitHub Pages。
 - 压力值恒定：部分第三方触控笔不提供 pressure，系统会回退到 `0.35`，仍可控制横纵向。
 - 状态 Pill 未变绿：确保使用 Apple Pencil 并且在画布区域按压；鼠标不会触发传输。
 - 画面太亮或想重绘：点击顶部「清空画布」即可重置视觉尾迹，音频不会被中断。

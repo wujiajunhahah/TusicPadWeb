@@ -313,15 +313,15 @@
     </div>
   </section>
   <section class="surface embed" aria-label="Strudel REPL">
-    <iframe id="strudel" src="https://strudel.cc/repl" allow="autoplay; clipboard-read; clipboard-write" title="Strudel REPL"></iframe>
-    <div class="frame-label">Strudel Repl · Paste Receiver · Run</div>
+    <iframe id="strudel" src="https://strudel.cc/repl#code=%2F%2F%20%3D%3D%3D%20TusicPad%20Receiver%20%3D%3D%3D%0AglobalThis.pen%20%3D%20%7B%20x%3A0.5%2C%20y%3A0.5%2C%20p%3A0.0%20%7D%3B%0Alet%20state%20%3D%20%7B%20x%3A0.5%2C%20y%3A0.5%2C%20p%3A0.0%20%7D%3B%0Aconst%20lerp%20%3D%20(a%2Cb%2Ct)%3D%3Ea%2B(b-a)*t%3B%0A%0Awindow.addEventListener('message'%2C%20(e)%3D%3E%7B%0A%20%20const%20d%20%3D%20e.data%3B%0A%20%20if(!d%20%7C%7C%20d.type!%3D%3D'pen')%20return%3B%0A%20%20pen.x%20%3D%20Math.max(0%2C%20Math.min(1%2C%20d.x))%3B%0A%20%20pen.y%20%3D%20Math.max(0%2C%20Math.min(1%2C%20d.y))%3B%0A%20%20pen.p%20%3D%20Math.max(0%2C%20Math.min(1%2C%20d.pressure%20%7C%7C%200))%3B%0A%7D)%3B%0A%0AsetInterval(()%3D%3E%7B%0A%20%20state.x%20%3D%20lerp(state.x%2C%20pen.x%2C%200.18)%3B%0A%20%20state.y%20%3D%20lerp(state.y%2C%20pen.y%2C%200.18)%3B%0A%20%20state.p%20%3D%20lerp(state.p%2C%20pen.p%2C%200.22)%3B%0A%7D%2C%2028)%3B%0A%0A%24%3A%20stack(%0A%20%20s('bd%20~%20sd%20~').gain(()%3D%3E0.45%20%2B%20state.p*0.8).speed(()%3D%3E0.9%20%2B%20state.x*0.4)%2C%0A%20%20note(()%3D%3E%20midi(48%20%2B%20Math.floor((1%20-%20state.y)*18)))%0A%20%20%20%20.sound('gm_strings')%0A%20%20%20%20.gain(()%3D%3E0.32%20%2B%20state.p*0.6)%0A%20%20%20%20.shape(()%3D%3E%20state.x)%0A%20%20%20%20.pan(()%3D%3E%20state.x*2-1)%2C%0A%20%20s('hh*4').gain(()%3D%3E0.2%20%2B%20state.p*0.5).speed(()%3D%3E1%20%2B%20state.x*0.5)%0A)%0A._pianoroll(%7Bcycles%3A4%7D)._spectrum(%7Bspeed%3A0.5%7D).gain(0.9)%0A" allow="autoplay; clipboard-read; clipboard-write" title="Strudel REPL"></iframe>
+    <div class="frame-label">Strudel Repl · Default Patch Ready · Press Run</div>
   </section>
 </main>
 
 <div id="gate" role="dialog" aria-modal="true">
   <div class="gate-card">
     <h2>Initiate Session</h2>
-    <p>点击 Start，随后在 Strudel 中粘贴接收片段并点一次 Run 以解锁音频。</p>
+    <p>点击 Start，然后在下方 Strudel REPL 中按 Run（默认已加载 TusicPad Patch）。</p>
     <button id="open" class="primary" type="button">Start</button>
   </div>
 </div>
