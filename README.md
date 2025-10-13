@@ -105,7 +105,6 @@ setInterval(()=>{
 
 $: stack(
   s("bd*2 [~ sd] bd [~ hh] bd sd")
-    .bank("RolandTR909")
     .gain(()=>0.6 + state.p*0.4)
     .speed(()=>0.8 + state.x*0.4)
     .distort(()=>state.p*0.2)
