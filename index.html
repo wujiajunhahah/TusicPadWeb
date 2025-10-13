@@ -379,10 +379,8 @@
     <button id="btn-visual" type="button" aria-label="Toggle Visual Full overlay">Visual Full</button>
     <button id="open-strudel" type="button" aria-label="Open Strudel in new tab">Open Strudel</button>
     <div class="preset-switch" role="group" aria-label="Strudel patch presets">
-      <button class="preset" data-patch="synth" aria-pressed="true">Synth</button>
-      <button class="preset" data-patch="tusic" aria-pressed="false">Default</button>
-      <button class="preset" data-patch="steel-halo" aria-pressed="false">Steel Halo</button>
-      <button class="preset" data-patch="kanye-v4" aria-pressed="false">Kanye v4</button>
+      <button class="preset" data-patch="kanye-v4" aria-pressed="true">Kanye v4</button>
+      <button class="preset" data-patch="synth" aria-pressed="false">Synth</button>
     </div>
     <span id="status-pill" data-state="waiting">
       <span class="dot" aria-hidden="true"></span>
@@ -406,7 +404,7 @@
   </section>
   <section class="surface embed" aria-label="Strudel REPL">
     <iframe id="strudel" src="about:blank" allow="autoplay; clipboard-read; clipboard-write" title="Strudel REPL"></iframe>
-    <div class="frame-label">Strudel Repl · Synth Fallback Ready · Press Run</div>
+    <div class="frame-label">Strudel Repl · Press Run ▶︎ · Then Draw Above</div>
   </section>
 
   <section class="preset-info" aria-live="polite">
@@ -599,83 +597,57 @@ $: stack(s('~')).gain(0.0001)
   },
   'kanye-v4': {
     id: 'kanye-v4',
-    name: 'Kanye Industrial v4',
-    description: 'Cold industrial beat + bass + chops + pad. Pencil tweaks params.',
-    code: `// === KANYE Industrial — Auto-Play with Pencil Params (WebAudio) ===
-// 父页 postMessage({type:'pen', x, y, pressure}) // 0..1
-globalThis.pen = globalThis.pen ?? { x:0.5, y:0.5, p:0.35 };
-let state = { x: pen.x, y: pen.y, p: pen.p };
-const clamp=v=>Math.max(0,Math.min(1,v)), lerp=(a,b,t)=>a+(b-a)*t;
+    name: 'Kanye Industrial — Safe Samples',
+    description: 'Cold industrial beat with safe numeric mappings. Pencil tweaks speed/brightness/drive/gain.',
+    code: `// === Kanye Industrial — SAFE (samples only, numeric controls) ===
+globalThis.pen = globalThis.pen ?? { x:0.5, y:0.5, p:0.35 }
+let state = { x: pen.x, y: pen.y, p: pen.p }
+const clamp01 = v => Math.max(0, Math.min(1, v))
+const safe = (v, def=0)=>{ const n=Number(v); return Number.isFinite(n)?n:def }
 
-// 平滑参数
-setInterval(()=>{ state.x=lerp(state.x,pen.x,0.2); state.y=lerp(state.y,pen.y,0.2); state.p=lerp(state.p,pen.p,0.2); },30);
+// 平滑
+setInterval(()=>{
+  state.x = safe(state.x + (pen.x - state.x)*0.2, 0.5)
+  state.y = safe(state.y + (pen.y - state.y)*0.2, 0.5)
+  state.p = safe(state.p + (pen.p - state.p)*0.2, 0.35)
+}, 30)
 
-// WebAudio 循环播放器（无需 Strudel 采样）
-let ctx, master, dist;
-function ensure(){
-  const C=window.AudioContext||window.webkitAudioContext; if(!C) return null;
-  if(!ctx){ ctx=new C(); master=ctx.createGain(); dist=ctx.createWaveShaper(); master.connect(dist).connect(ctx.destination); master.gain.value=0.6; }
-  if(ctx.state==='suspended') ctx.resume();
-  return ctx;
-}
-function shapeCurve(amount=0){
-  const n=44100; const curve=new Float32Array(n); const k=amount*100+1; const deg=Math.PI/180;
-  for(let i=0;i<n;i++){ const x=i*2/n-1; curve[i]=(1+k)*x/(1+k*Math.abs(x)); }
-  return curve;
-}
+// 接收 iFrame 外的 Pencil 数据
+window.addEventListener('message', e=>{
+  const d=e.data; if(!d || d.type!=='pen') return;
+  pen.x = clamp01(d.x); pen.y = clamp01(d.y); pen.p = clamp01(d.pressure ?? 0.35)
+})
 
-let timer=null; let step=0; const roots=[46,49,43,42];
-function loop(){
-  if(!ensure()) return;
-  dist.curve=shapeCurve(state.p*0.6);
-  const base=roots[Math.floor((1-state.y)*roots.length)%roots.length];
-  const bpm=92+Math.floor(state.x*56); // x 控速度
-  const spb=60/bpm; // seconds per beat
-  const now=ctx.currentTime;
-  for(let i=0;i<2;i++){
-    const t=now+i*spb;
-    // kick: 每拍
-    if((step+i)%1===0){ trig(t, 60, 0.35+state.p*0.3, 'sine'); }
-    // snare: 后拍
-    if((step+i)%2===1){ trig(t, 180, 0.18+state.p*0.22, 'triangle'); }
-    // hats: 每 1/2 拍
-    trig(t, 6000*(0.6+state.x*0.7), 0.06+state.p*0.12, 'noise');
-    // bass: 根音 1/2
-    tone(t, midiToHz(base), 0.22+state.p*0.18, 'saw');
-    // chop: 选音
-    const picks=[7,10,12,14]; const k=picks[Math.floor(state.x*picks.length)%picks.length];
-    tone(t+spb*0.25, midiToHz(base+24+k), 0.08+state.p*0.18, 'square');
-  }
-  step=(step+2)%16;
-}
-function midiToHz(m){ return 440*Math.pow(2,(m-69)/12); }
-function tone(at, freq, amp, type){
-  const o=ctx.createOscillator(); const g=ctx.createGain(); o.type=type; o.frequency.setValueAtTime(freq,at);
-  g.gain.setValueAtTime(0.0005,at); g.gain.exponentialRampToValueAtTime(Math.max(0.01,amp*0.2),at+0.01); g.gain.exponentialRampToValueAtTime(0.0001,at+0.18);
-  o.connect(g).connect(master); o.start(at); o.stop(at+0.22);
-}
-function trig(at, freq, amp, kind){
-  if(kind==='noise'){
-    const b=ctx.createBuffer(1, 1*ctx.sampleRate, ctx.sampleRate); const d=b.getChannelData(0); for(let i=0;i<d.length;i++){ d[i]=Math.random()*2-1; }
-    const s=ctx.createBufferSource(); s.buffer=b; const g=ctx.createGain();
-    g.gain.setValueAtTime(0.0005,at); g.gain.exponentialRampToValueAtTime(Math.max(0.01,amp*0.2),at+0.005); g.gain.exponentialRampToValueAtTime(0.0001,at+0.08);
-    s.connect(g).connect(master); s.start(at); s.stop(at+0.1);
-  }else{
-    tone(at, freq, amp, 'sine');
-  }
-}
+// 工业鼓：冰冷底鼓 + 呼吸；x→速度, p→能量/失真
+const drums = s("bd ~ [~ sd] ~ bd [~ sd] ~ [hh ~]")
+  .gain(()=> safe(0.55 + state.p*0.35, 0.6))
+  .speed(()=> safe(0.82 + state.x*0.46, 1.0))
+  .crush(()=> safe(2 + Math.floor(state.x*6), 2))
+  .distort(()=> safe(0.15 + state.p*0.25, 0.15))
+  .cut(1)
 
-// 接收 Pencil 并维持循环
-window.addEventListener('message', e=>{ const d=e.data; if(!d||d.type!=='pen') return; pen.x=clamp(d.x); pen.y=clamp(d.y); pen.p=clamp(d.pressure??0.35); ensure(); });
+// 亮帽：色彩
+const hats = s("hh*8")
+  .gain(()=> safe(0.06 + state.p*0.18, 0.12))
+  .hp(()=>   safe(4000 + state.x*5000, 5000))
+  .speed(()=> safe(1 + state.x*0.5, 1.1))
+  .pan(()=>  safe((state.x*2-1)*0.4, 0))
 
-// 自动播放：按 Run 立即开始循环
-ensure(); if(timer) clearInterval(timer); timer=setInterval(loop, 120);
+// 反拍噪：质感补强
+const noise = s("[~ cp] ~ [~ cp] ~")
+  .gain(()=> safe(0.05 + state.p*0.2, 0.1))
+  .hp(()=>   safe(2500 + state.x*4500, 3000))
+  .distort(()=> safe(state.p*0.2, 0))
 
-// 仅用于可视化：画面组件由父页铺满 iframe 展示
-$: stack(s('~')).gain(0.0001)
-._pianoroll({cycles:8,playhead:0.4})
-._spectrum({thickness:3,speed:0.5})
-._oscilloscope()`
+// 气垫：静音占位（保持可视化连续）
+const pad = s("~")
+  .gain(()=> 0)
+
+// 总装 + 可视化
+$: stack(drums, hats, noise, pad)
+  ._pianoroll({ cycles: 8, playhead: 0.4 })
+  ._spectrum({ thickness: 3, speed: 0.5 })
+  .gain(0.9)`
   },
   'tusic': {
     id: 'tusic',
@@ -802,7 +774,9 @@ function encodeCodeToHash(code){
 }
 
 function buildStrudelUrl(code){
-  return `https://strudel.cc/#${encodeURIComponent(encodeCodeToHash(code))}`;
+  const hash = encodeURIComponent(encodeCodeToHash(code));
+  const bust = Date.now().toString(36);
+  return `https://strudel.cc/#${hash}&v=${bust}`;
 }
 
 function loadPatch(patchId, reload = true){
@@ -981,7 +955,7 @@ presetButtons.forEach(btn => {
 window.addEventListener('resize', resizeCanvas, { passive: true });
 window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 280));
 
-loadPatch('synth', false);
+loadPatch('kanye-v4', false);
 resizeCanvas();
 clearCanvas();
 if(!reduceMotion){
