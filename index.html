@@ -462,6 +462,8 @@ let audioCtx = null;
 let strudelOriginalParent = null;
 let strudelNextSibling = null;
 let visualFullActive = false;
+// 声压探测
+let meterCtx = null, meterTimer = null;
 
 // 记录初始父节点用于还原
 queueMicrotask(() => {
@@ -489,6 +491,27 @@ function restoreStrudelToEmbed(){
     strudelFrame.classList.remove('visual-full');
     visualFullActive = false;
   }
+}
+
+function startLevelProbe(){
+  if(meterTimer) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) return;
+  meterCtx = meterCtx || new AC();
+  if(meterCtx.state === 'suspended') meterCtx.resume();
+  const analyser = meterCtx.createAnalyser();
+  analyser.fftSize = 512;
+  const src = meterCtx.createOscillator();
+  const gain = meterCtx.createGain();
+  gain.gain.value = 0.00001; // 几乎静音
+  src.connect(gain).connect(analyser).connect(meterCtx.destination);
+  src.start();
+  const buf = new Uint8Array(analyser.frequencyBinCount);
+  meterTimer = setInterval(()=>{
+    analyser.getByteFrequencyData(buf);
+    const peak = Math.max(...buf)/255;
+    if(peak > 0.02){ setStatus('live'); }
+  }, 140);
 }
 
 function ensureAudioContext(){
@@ -639,9 +662,12 @@ const noise = s("[~ cp] ~ [~ cp] ~")
   .hp(()=>   safe(2500 + state.x*4500, 3000))
   .distort(()=> safe(state.p*0.2, 0))
 
-// 气垫：静音占位（保持可视化连续）
-const pad = s("~")
-  .gain(()=> 0)
+// 气垫：极轻底纹，保证可视化持续
+const pad = s("hh*2 ~ ~ hh*2 ~ ~")
+  .gain(()=> safe(0.01 + state.p*0.01, 0.01))
+  .hp(()=>   safe(6000 + state.x*3000, 7000))
+  .speed(()=> safe(0.5 + state.x*0.2, 0.6))
+  .cut(3)
 
 // 总装 + 可视化
 $: stack(drums, hats, noise, pad)
@@ -780,6 +806,8 @@ function buildStrudelUrl(code){
 }
 
 function loadPatch(patchId, reload = true){
+  const safeList = new Set(['kanye-v4','synth']);
+  if(!safeList.has(patchId)) patchId = 'kanye-v4';
   const patch = patches[patchId];
   if(!patch) return;
   const wasSame = currentPatch && currentPatch.id === patch.id;
@@ -922,6 +950,7 @@ openButton.addEventListener('click', () => {
   if(target){
     target.postMessage({ type: 'hint', action: 'focus' }, 'https://strudel.cc');
   }
+  startLevelProbe();
 });
 
 if(openStrudelButton){
@@ -933,6 +962,7 @@ if(openStrudelButton){
 if(testSoundButton){
   testSoundButton.addEventListener('click', () => {
     playTestBeep();
+    startLevelProbe();
   });
 }
 
