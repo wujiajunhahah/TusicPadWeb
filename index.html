@@ -4,29 +4,30 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>TusicPadWeb — Pencil ▶︎ Strudel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    color-scheme: dark;
-    --bg:#05070c;
-    --panel:rgba(12,15,25,0.72);
-    --panel-strong:rgba(17,22,36,0.88);
-    --stroke:rgba(255,255,255,0.08);
-    --accent:#7f5af0;
-    --accent-soft:rgba(127,90,240,0.45);
-    --success:#3ce1a4;
-    --text-primary:#f6f7ff;
-    --text-muted:rgba(255,255,255,0.62);
+    color-scheme:dark;
+    --bg:#0b0b0c;
+    --grid:#15161a;
+    --stroke:#25262c;
+    --stroke-strong:#3a3b44;
+    --accent:#ff3b45;
+    --accent-soft:rgba(255,59,69,0.18);
+    --text:#f4f5f7;
+    --muted:rgba(244,245,247,0.55);
   }
-  *{box-sizing:border-box;}
+  *,*::before,*::after{box-sizing:border-box;}
   html,body{margin:0;min-height:100%;}
   body{
-    font:15px/1.6 "SF Pro Display", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family:'Space Grotesk','SF Pro Display',system-ui,-apple-system,'Segoe UI',sans-serif;
+    background-color:var(--bg);
+    color:var(--text);
+    min-height:100vh;
     display:flex;
-    background:
-      radial-gradient(circle at 20% -10%, rgba(127,90,240,0.28), transparent 48%),
-      radial-gradient(circle at 85% 15%, rgba(60,225,164,0.22), transparent 55%),
-      linear-gradient(160deg, #05070c 0%, #090d17 45%, #111a2d 100%);
-    color:var(--text-primary);
+    flex-direction:column;
     -webkit-font-smoothing:antialiased;
     touch-action:manipulation;
   }
@@ -34,51 +35,69 @@
     content:"";
     position:fixed;
     inset:0;
-    background:radial-gradient(circle at 50% 0%, rgba(255,255,255,0.04), transparent 65%);
+    background-image:radial-gradient(var(--grid) 1px, transparent 0);
+    background-size:10px 10px;
+    opacity:0.85;
+    pointer-events:none;
+    z-index:-2;
+  }
+  body::after{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:linear-gradient(180deg, rgba(0,0,0,0.72) 0%, transparent 38%, transparent 72%, rgba(0,0,0,0.82) 100%);
     pointer-events:none;
     z-index:-1;
-  }
-  .layout{
-    flex:1;
-    display:flex;
-    flex-direction:column;
-    min-height:100vh;
   }
   header{
     display:flex;
     align-items:center;
     justify-content:space-between;
-    padding:clamp(18px, 4vw, 30px) clamp(18px, 6vw, 40px) clamp(12px, 3vw, 20px);
-    gap:18px;
+    padding:28px clamp(20px,5vw,52px) 18px;
+    border-bottom:1px solid var(--stroke);
+    text-transform:uppercase;
+    letter-spacing:0.22em;
   }
   .brand{
     display:flex;
     align-items:center;
     gap:18px;
   }
-  .logo{
-    width:52px;
-    height:52px;
-    border-radius:18px;
-    background:
-      linear-gradient(150deg, rgba(127,90,240,0.95), rgba(60,225,164,0.8));
+  .glyph{
+    width:54px;
+    height:54px;
+    border-radius:50%;
+    border:1px solid var(--stroke-strong);
     display:grid;
     place-items:center;
-    font-size:22px;
-    box-shadow:0 16px 40px rgba(80,44,200,0.35);
+    font-family:'DotGothic16','Space Grotesk',monospace;
+    font-size:20px;
+    letter-spacing:0.28em;
+    position:relative;
   }
-  .brand h1{
-    margin:0;
-    font-size:clamp(22px, 4.6vw, 32px);
-    font-weight:600;
-    letter-spacing:0.01em;
+  .glyph::after{
+    content:"";
+    position:absolute;
+    inset:12px;
+    border:1px dashed var(--stroke-strong);
+    border-radius:50%;
   }
-  .brand p{
-    margin:6px 0 0;
-    font-size:14px;
-    color:var(--text-muted);
+  .brand-text{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
   }
-  .status{
+  .brand-text span{
+    font-family:'DotGothic16','Space Grotesk',monospace;
+    font-size:clamp(18px,3.4vw,26px);
+  }
+  .brand-text em{
+    font-style:normal;
+    font-size:12px;
+    letter-spacing:0.42em;
+    color:var(--muted);
+  }
+  .actions{
     display:flex;
     align-items:center;
     gap:12px;
@@ -87,124 +106,98 @@
   }
   button{
     appearance:none;
-    border:none;
-    border-radius:18px;
-    font:500 15px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+    border:1px solid var(--stroke);
+    background:transparent;
+    color:var(--text);
     cursor:pointer;
-    transition:transform 0.2s ease, box-shadow 0.3s ease, background 0.3s ease, border 0.3s ease;
+    border-radius:999px;
+    text-transform:uppercase;
+    letter-spacing:0.18em;
+    font-size:12px;
+    padding:10px 18px;
+    transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease;
   }
-  button:focus-visible{outline:2px solid var(--accent); outline-offset:3px;}
-  .primary{
-    padding:12px 24px;
-    background:linear-gradient(140deg, rgba(127,90,240,0.95), rgba(103,120,255,0.92));
-    color:#fff;
-    box-shadow:0 18px 40px rgba(70,40,180,0.35);
-  }
-  .primary:hover{transform:translateY(-1px); box-shadow:0 22px 48px rgba(70,40,180,0.42);}
-  .primary:active{transform:translateY(0); box-shadow:0 12px 28px rgba(70,40,180,0.32);}
-  .ghost{
-    padding:10px 20px;
-    background:rgba(255,255,255,0.08);
-    color:var(--text-primary);
-    border:1px solid rgba(255,255,255,0.12);
-  }
-  .ghost:hover{background:rgba(255,255,255,0.12);}
-  .ghost:active{background:rgba(255,255,255,0.16);}
-  .pill{
+  button:hover{border-color:var(--accent); color:var(--accent);}
+  button:focus-visible{outline:2px dashed var(--accent); outline-offset:4px;}
+  #status-pill{
     display:flex;
     align-items:center;
-    gap:10px;
-    padding:10px 16px;
+    gap:12px;
+    padding:10px 18px;
     border-radius:999px;
-    background:rgba(255,255,255,0.05);
-    border:1px solid rgba(255,255,255,0.08);
-    font-size:14px;
-    letter-spacing:0.01em;
-    transition:background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
+    border:1px dashed var(--stroke);
+    font-size:12px;
+    letter-spacing:0.18em;
   }
-  .pill .dot{
+  #status-pill .dot{
     width:10px;
     height:10px;
     border-radius:50%;
-    background:#676a74;
-    box-shadow:0 0 0 rgba(127,90,240,0.0);
-    transition:background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+    background:var(--stroke);
+    transition:background 0.25s ease, box-shadow 0.25s ease;
   }
-  .pill[data-state="waiting"]{background:rgba(255,255,255,0.04);}
-  .pill[data-state="ready"]{
-    border-color:rgba(127,90,240,0.45);
-    box-shadow:0 12px 28px rgba(45,30,120,0.28);
-  }
-  .pill[data-state="ready"] .dot{
-    background:var(--accent);
-    box-shadow:0 0 12px rgba(127,90,240,0.8);
-  }
-  .pill[data-state="live"]{
-    background:rgba(60,225,164,0.18);
-    border-color:rgba(60,225,164,0.6);
-    box-shadow:0 16px 32px rgba(30,120,80,0.38);
-  }
-  .pill[data-state="live"] .dot{
-    background:var(--success);
-    box-shadow:0 0 16px rgba(60,225,164,0.85);
-    transform:scale(1.15);
-  }
+  #status-pill[data-state="ready"]{border-color:var(--accent); color:var(--accent);}
+  #status-pill[data-state="ready"] .dot{background:var(--accent); box-shadow:0 0 6px rgba(255,59,69,0.6);}
+  #status-pill[data-state="live"]{border-color:var(--accent); background:var(--accent-soft); color:var(--accent);}
+  #status-pill[data-state="live"] .dot{background:var(--accent); box-shadow:0 0 12px rgba(255,59,69,0.6);}
   main{
     flex:1;
     display:grid;
-    grid-template-rows:minmax(320px, 6fr) minmax(260px, 4fr);
-    gap:clamp(18px, 3vw, 30px);
-    padding:0 clamp(18px, 6vw, 40px) clamp(18px, 6vw, 40px);
+    grid-template-rows:minmax(320px, 58vh) minmax(240px, 1fr);
+    gap:clamp(16px,4vw,28px);
+    padding:24px clamp(20px,6vw,52px) clamp(26px,6vw,52px);
   }
   .surface{
     position:relative;
-    border-radius:28px;
-    overflow:hidden;
-    background:var(--panel);
+    border-radius:24px;
     border:1px solid var(--stroke);
-    box-shadow:0 24px 60px rgba(5,12,30,0.45);
+    background:rgba(12,12,14,0.78);
+    overflow:hidden;
   }
   #pad{
     touch-action:none;
-    background:
-      radial-gradient(120% 150% at 18% 20%, rgba(127,90,240,0.18), transparent 55%),
-      radial-gradient(140% 160% at 88% 12%, rgba(60,225,164,0.16), transparent 62%),
-      rgba(8,11,20,0.85);
   }
-  #pad::after{
+  #pad::before{
     content:"";
     position:absolute;
-    inset:-40% -30% -30% -40%;
+    inset:0;
+    background:
+      linear-gradient(transparent 79%, rgba(255,255,255,0.04) 79%, rgba(255,255,255,0.04) 81%, transparent 81%),
+      linear-gradient(90deg, transparent 79%, rgba(255,255,255,0.04) 79%, rgba(255,255,255,0.04) 81%, transparent 81%);
+    background-size:92px 92px;
     pointer-events:none;
-    background:radial-gradient(circle at 20% 20%, rgba(127,90,240,0.3), transparent 45%),
-               radial-gradient(circle at 80% 30%, rgba(60,225,164,0.28), transparent 52%);
-    opacity:0.25;
-    transition:opacity 0.4s ease;
+    mix-blend-mode:screen;
+    opacity:0.4;
+    transition:opacity 0.35s ease;
   }
-  #pad.is-active::after{opacity:0.55;}
-  canvas{width:100%;height:100%;display:block;}
+  #pad.is-active::before{opacity:0.75;}
+  canvas{width:100%;height:100%;display:block;background:radial-gradient(circle at 50% 50%, rgba(255,59,69,0.08), transparent 65%), rgba(6,6,7,0.9);}
   .hud{
     position:absolute;
-    top:22px;
-    left:22px;
-    max-width:min(360px, 70vw);
-    padding:18px 20px;
-    border-radius:22px;
-    background:var(--panel-strong);
-    border:1px solid rgba(255,255,255,0.12);
-    backdrop-filter:blur(18px) saturate(140%);
+    top:28px;
+    left:28px;
+    display:grid;
+    gap:8px;
+    padding:18px 22px;
+    background:rgba(11,11,12,0.72);
+    border:1px solid var(--stroke);
+    border-radius:16px;
     pointer-events:none;
-    box-shadow:0 24px 40px rgba(6,8,16,0.45);
+    text-transform:uppercase;
+    letter-spacing:0.18em;
+    font-size:11px;
   }
-  .hud strong{display:block;font-size:16px;font-weight:600;margin-bottom:6px;letter-spacing:0.01em;}
-  .hud p{margin:0;font-size:13px;color:var(--text-muted);}
-  .hud .tips{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;}
+  .hud strong{
+    font-family:'DotGothic16','Space Grotesk',monospace;
+    font-size:14px;
+    letter-spacing:0.3em;
+  }
+  .hud span{color:var(--muted);}
+  .hud .tips{display:flex;flex-wrap:wrap;gap:8px;}
   .hud .tips span{
-    font-size:12px;
-    padding:6px 10px;
-    border-radius:14px;
-    background:rgba(255,255,255,0.08);
-    letter-spacing:0.02em;
+    border:1px dashed var(--stroke);
+    border-radius:999px;
+    padding:6px 12px;
   }
   .embed iframe{
     position:absolute;
@@ -215,15 +208,16 @@
   }
   .frame-label{
     position:absolute;
-    top:20px;
-    left:20px;
-    padding:10px 16px;
-    border-radius:16px;
-    background:rgba(0,0,0,0.45);
-    border:1px solid rgba(255,255,255,0.12);
-    color:var(--text-muted);
-    font-size:13px;
-    letter-spacing:0.02em;
+    top:24px;
+    left:24px;
+    padding:8px 14px;
+    border-radius:14px;
+    border:1px dashed var(--stroke);
+    background:rgba(11,11,12,0.72);
+    text-transform:uppercase;
+    letter-spacing:0.26em;
+    font-size:11px;
+    color:var(--muted);
     pointer-events:none;
   }
   #gate{
@@ -233,93 +227,92 @@
     align-items:center;
     justify-content:center;
     padding:24px;
-    background:rgba(6,10,22,0.88);
-    backdrop-filter:blur(22px);
+    background:rgba(7,7,8,0.9);
+    border-top:1px solid var(--stroke);
+    border-bottom:1px solid var(--stroke);
     z-index:20;
   }
   #gate[hidden]{display:none;}
   .gate-card{
     max-width:420px;
-    padding:32px clamp(24px, 6vw, 40px);
-    border-radius:28px;
-    background:rgba(12,16,28,0.92);
-    border:1px solid rgba(255,255,255,0.12);
-    box-shadow:0 32px 80px rgba(6,8,18,0.65);
+    width:100%;
+    padding:36px clamp(24px,6vw,44px);
+    border:1px dashed var(--stroke);
+    border-radius:24px;
+    background:rgba(9,9,10,0.82);
     text-align:center;
+    text-transform:uppercase;
+    letter-spacing:0.24em;
+    display:grid;
+    gap:18px;
   }
-  .gate-card h2{
-    margin:0 0 12px;
-    font-size:clamp(22px, 4vw, 28px);
-    font-weight:600;
+  .gate-card h2{margin:0;font-family:'DotGothic16','Space Grotesk',monospace;font-size:18px;}
+  .gate-card p{margin:0;color:var(--muted);font-size:12px;}
+  .primary{
+    background:var(--accent);
+    color:#0a0a0b;
+    border-color:var(--accent);
   }
-  .gate-card p{
-    margin:0 0 22px;
-    color:var(--text-muted);
-    font-size:14px;
+  .primary:hover{background:transparent;color:var(--accent);}
+  @media (max-width:880px){
+    header{flex-direction:column;align-items:flex-start;gap:16px;padding-top:24px;}
+    .actions{width:100%;justify-content:flex-start;}
+    main{grid-template-rows:minmax(300px, 48vh) minmax(240px, 1fr);}
+    .hud{top:20px;left:20px;padding:16px 18px;}
   }
-  @media (max-width:900px){
-    header{flex-direction:column;align-items:flex-start;}
-    .status{width:100%;justify-content:flex-start;}
-    main{grid-template-rows:minmax(280px, 1fr) minmax(320px, 1fr);}
-    .hud{max-width:90%;top:18px;left:18px;padding:16px 18px;}
-  }
-  @media (max-width:600px){
-    body{font-size:14px;}
-    .brand{gap:14px;}
-    .logo{width:44px;height:44px;font-size:20px;}
-    .brand h1{font-size:22px;}
-    .hud strong{font-size:15px;}
+  @media (max-width:620px){
+    header{letter-spacing:0.18em;}
+    button{font-size:11px;letter-spacing:0.14em;padding:9px 16px;}
+    .hud{letter-spacing:0.14em;}
+    .frame-label{letter-spacing:0.18em;}
   }
   @media (prefers-reduced-motion: reduce){
-    *, *::before, *::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important;scroll-behavior:auto !important;}
+    *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important;scroll-behavior:auto !important;}
   }
 </style>
 </head>
 <body>
-<div class="layout">
-  <header>
-    <div class="brand">
-      <div class="logo" aria-hidden="true">🎶</div>
-      <div>
-        <h1>TusicPadWeb</h1>
-        <p>Apple Pencil → Strudel 音乐互动外壳</p>
+<header>
+  <div class="brand">
+    <div class="glyph" aria-hidden="true">TP</div>
+    <div class="brand-text">
+      <span>TusicPadWeb</span>
+      <em>Pencil → Strudel Shell</em>
+    </div>
+  </div>
+  <div class="actions">
+    <button id="clear" type="button">Clear Canvas</button>
+    <span id="status-pill" data-state="waiting">
+      <span class="dot" aria-hidden="true"></span>
+      <span id="status-text">Waiting</span>
+    </span>
+  </div>
+</header>
+
+<main>
+  <section id="pad" class="surface" aria-label="Pencil 捕获区域">
+    <canvas id="cv"></canvas>
+    <div class="hud">
+      <strong>Draw to Play</strong>
+      <span>Apple Pencil 数据将实时送入 Strudel。</span>
+      <div class="tips">
+        <span>X → Rhythm Density</span>
+        <span>Y → Pitch</span>
+        <span>Pressure → Gain</span>
       </div>
     </div>
-    <div class="status">
-      <button id="clear" class="ghost" type="button">清空画布</button>
-      <span id="status-pill" class="pill" data-state="waiting">
-        <span class="dot" aria-hidden="true"></span>
-        <span id="status-text">等待开始…</span>
-      </span>
-    </div>
-  </header>
-
-  <main>
-    <section id="pad" class="surface" aria-label="Pencil 捕获区域">
-      <canvas id="cv"></canvas>
-      <div class="hud">
-        <strong>在此绘制，即刻控制 Strudel</strong>
-        <p>Apple Pencil 的横向、纵向与压力值会实时传给下方的 Strudel REPL。</p>
-        <div class="tips">
-          <span>横向 → 节奏速度</span>
-          <span>纵向 → 音高</span>
-          <span>压力 → 音量 / 质感</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="surface embed" aria-label="Strudel REPL">
-      <iframe id="strudel" src="https://strudel.cc/repl" allow="autoplay; clipboard-read; clipboard-write" title="Strudel REPL"></iframe>
-      <div class="frame-label">Strudel REPL · 请粘贴接收片段并点击 Run</div>
-    </section>
-  </main>
-</div>
+  </section>
+  <section class="surface embed" aria-label="Strudel REPL">
+    <iframe id="strudel" src="https://strudel.cc/repl" allow="autoplay; clipboard-read; clipboard-write" title="Strudel REPL"></iframe>
+    <div class="frame-label">Strudel Repl · Paste Receiver & Run</div>
+  </section>
+</main>
 
 <div id="gate" role="dialog" aria-modal="true">
   <div class="gate-card">
-    <h2>准备“画着演奏”了吗？</h2>
-    <p>点击开始后，请在下方 Strudel REPL 粘贴接收片段并点一下 Run，以解锁音频播放。</p>
-    <button id="open" class="primary" type="button">开始演奏</button>
+    <h2>Initialize the Session</h2>
+    <p>点击开始，随后在 Strudel 中粘贴接收片段并点一次 Run 以解锁音频。</p>
+    <button id="open" class="primary" type="button">Start</button>
   </div>
 </div>
 
@@ -334,21 +327,21 @@ const clearButton = document.getElementById('clear');
 const gate = document.getElementById('gate');
 const openButton = document.getElementById('open');
 
-const stateTextMap = {
-  waiting: '等待开始…',
-  ready: '准备就绪，等待 Pencil',
-  live: '实时传输中'
+const statusCopy = {
+  waiting: 'Waiting',
+  ready: 'Ready',
+  live: 'Live'
 };
 
 const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let fadeHandle = null;
-let lastSent = 0;
 let hue = 0;
-let statusTimeout;
+let lastSent = 0;
+let settleTimer;
 
 function setStatus(state){
   statusPill.dataset.state = state;
-  statusText.textContent = stateTextMap[state] || '';
+  statusText.textContent = statusCopy[state] || '';
 }
 
 function resizeCanvas(){
@@ -365,25 +358,25 @@ function resizeCanvas(){
 function clearCanvas(){
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = 'rgba(6, 8, 16, 1)';
+  ctx.fillStyle = 'rgba(7,7,8,1)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.restore();
   hue = 0;
 }
 
 function fadeFrame(){
-  ctx.fillStyle = 'rgba(5, 8, 18, 0.12)';
+  ctx.fillStyle = 'rgba(8,8,10,0.18)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   fadeHandle = requestAnimationFrame(fadeFrame);
 }
 
 function drawDot(x, y, pressure){
-  const radius = (8 + pressure * 16) * (window.devicePixelRatio || 1);
-  ctx.fillStyle = `hsla(${hue % 360}, 88%, 62%, ${0.35 + pressure * 0.45})`;
+  const radius = (7 + pressure * 14) * (window.devicePixelRatio || 1);
+  ctx.fillStyle = `hsla(${(hue % 360).toFixed(2)}, 80%, 64%, ${0.32 + pressure * 0.46})`;
   ctx.beginPath();
   ctx.arc(x * canvas.width, y * canvas.height, radius, 0, Math.PI * 2);
   ctx.fill();
-  hue += 1.6;
+  hue += 2.2;
 }
 
 function sendPen(x, y, pressure){
@@ -392,56 +385,60 @@ function sendPen(x, y, pressure){
   target.postMessage({ type: 'pen', x, y, pressure, t: performance.now() }, '*');
 }
 
-function handleInteraction(){
+function updateInteractionState(){
   pad.classList.add('is-active');
   setStatus('live');
-  clearTimeout(statusTimeout);
-  statusTimeout = setTimeout(()=>{
+  clearTimeout(settleTimer);
+  settleTimer = setTimeout(() => {
     pad.classList.remove('is-active');
     setStatus('ready');
-  }, 1100);
+  }, 1000);
 }
 
-function pointerEventToCanvas(e){
+function pointerToCanvas(event){
   const rect = canvas.getBoundingClientRect();
-  const x = (e.clientX - rect.left) / rect.width;
-  const y = (e.clientY - rect.top) / rect.height;
-  const pressure = typeof e.pressure === 'number' ? e.pressure : 0.35;
-  return { x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)), pressure: Math.min(1, Math.max(0, pressure)) };
+  const x = (event.clientX - rect.left) / rect.width;
+  const y = (event.clientY - rect.top) / rect.height;
+  const pressure = typeof event.pressure === 'number' ? event.pressure : 0.35;
+  return {
+    x: Math.min(1, Math.max(0, x)),
+    y: Math.min(1, Math.max(0, y)),
+    pressure: Math.min(1, Math.max(0, pressure))
+  };
 }
 
 pad.addEventListener('pointerdown', event => {
   if(event.pointerType !== 'pen') return;
-  const { x, y, pressure } = pointerEventToCanvas(event);
-  drawDot(x, y, pressure);
-  sendPen(x, y, pressure);
-  handleInteraction();
+  const data = pointerToCanvas(event);
+  drawDot(data.x, data.y, data.pressure);
+  sendPen(data.x, data.y, data.pressure);
+  updateInteractionState();
 });
 
 pad.addEventListener('pointermove', event => {
   if(event.pointerType !== 'pen' || event.buttons === 0) return;
-  const { x, y, pressure } = pointerEventToCanvas(event);
-  drawDot(x, y, pressure);
+  const data = pointerToCanvas(event);
+  drawDot(data.x, data.y, data.pressure);
   const now = performance.now();
   if(now - lastSent > 16){
-    sendPen(x, y, pressure);
+    sendPen(data.x, data.y, data.pressure);
     lastSent = now;
   }
-  handleInteraction();
+  updateInteractionState();
 }, { passive: true });
 
 pad.addEventListener('pointerup', () => {
-  clearTimeout(statusTimeout);
-  statusTimeout = setTimeout(()=>{
+  clearTimeout(settleTimer);
+  settleTimer = setTimeout(() => {
     pad.classList.remove('is-active');
     setStatus('ready');
   }, 600);
 });
 
 pad.addEventListener('pointerleave', () => {
-  clearTimeout(statusTimeout);
+  clearTimeout(settleTimer);
   pad.classList.remove('is-active');
-  statusTimeout = setTimeout(()=> setStatus('ready'), 600);
+  settleTimer = setTimeout(() => setStatus('ready'), 600);
 });
 
 clearButton.addEventListener('click', () => {
@@ -459,13 +456,8 @@ openButton.addEventListener('click', () => {
   }
 });
 
-window.addEventListener('resize', () => {
-  resizeCanvas();
-});
-
-window.addEventListener('orientationchange', () => {
-  setTimeout(resizeCanvas, 250);
-});
+window.addEventListener('resize', resizeCanvas, { passive: true });
+window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 260));
 
 resizeCanvas();
 clearCanvas();
