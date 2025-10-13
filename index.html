@@ -483,55 +483,73 @@ const patches = {
     id: 'synth',
     name: 'Synth Fallback Patch',
     description: 'Pure synth oscillators mapped to x/y/pressure — no samples required.',
-    code: `// === Synth Fallback: no external samples ===
+    code: `// === Synth Fallback: pure WebAudio inside Strudel frame ===
+// 同步 Pencil 数据
 globalThis.pen = { x:0.5, y:0.5, p:0.0 };
 let state = { x:0.5, y:0.5, p:0.0 };
 const lerp = (a,b,t)=>a+(b-a)*t;
 
-window.addEventListener('message', (e)=>{
-  const d = e.data;
-  if(!d || d.type!=='pen') return;
-  pen.x = Math.max(0, Math.min(1, d.x));
-  pen.y = Math.max(0, Math.min(1, d.y));
-  pen.p = Math.max(0, Math.min(1, d.pressure || 0));
-});
-
+// 轻量平滑，降低抖动
 setInterval(()=>{
   state.x = lerp(state.x, pen.x, 0.2);
   state.y = lerp(state.y, pen.y, 0.2);
   state.p = lerp(state.p, pen.p, 0.24);
 }, 28);
 
-// 合成鼓: blep/kick，无需采样
-const kick = s('~').blep({type:'sine'}).shape(()=>0.5+state.p*0.4)
-  .gain(()=>0.4 + state.p*0.6)
-  .lp(()=>200 + state.p*800);
+// 简易合成器：基于 AudioContext 的瞬态哔声（避免依赖 Strudel 采样/合成器节点）
+let __ctx = null;
+function ensureCtx(){
+  try{
+    if(!__ctx){
+      const C = window.AudioContext || window.webkitAudioContext;
+      if(!C) return null;
+      __ctx = new C();
+    }
+    if(__ctx.state === 'suspended') __ctx.resume();
+    return __ctx;
+  }catch(_){ return null; }
+}
 
-// 主音: 按 y 选音高，x 决定波形混比
-const baseMidi = ()=> 48 + Math.floor((1 - state.y) * 18);
-const lead = note(()=> midi(baseMidi()))
-  .blep({type:'saw'})
-  .mix(()=> state.x)
-  .shape(()=> 0.2 + state.p*0.6)
-  .pan(()=> state.x*2-1)
-  .gain(()=> 0.25 + state.p*0.5);
+function beep(freq, amp, dur=0.12){
+  const ctx = ensureCtx();
+  if(!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  // 依据 x 在 saw/sine 间插值：x 越大越亮
+  const useSaw = state.x > 0.5;
+  osc.type = useSaw ? 'sawtooth' : 'sine';
+  osc.frequency.setValueAtTime(freq, now);
+  gain.gain.setValueAtTime(0.0008, now);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.02, amp*0.3), now + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + dur + 0.02);
+}
 
-// 高频噪声：跟随 x/p 变化
-const air = noise()
-  .hp(()=> 4000 + state.x*4000)
-  .gain(()=> state.p*0.25)
-  .slow(2);
+// 将 y→音高、p→音量，限流触发（约每 90ms 触发一次）
+let lastFire = 0;
+window.addEventListener('message', (e)=>{
+  const d = e.data;
+  if(!d || d.type!=='pen') return;
+  pen.x = Math.max(0, Math.min(1, d.x));
+  pen.y = Math.max(0, Math.min(1, d.y));
+  pen.p = Math.max(0, Math.min(1, d.pressure || 0));
+  const t = performance.now();
+  if(t - lastFire > 90){
+    // y 从低到高映射 midi 36..72
+    const midi = 36 + Math.floor((1 - state.y) * 36);
+    const freq = 440 * Math.pow(2, (midi - 69)/12);
+    const amp = 0.1 + state.p * 0.4;
+    beep(freq, amp, 0.12 + state.p*0.08);
+    lastFire = t;
+  }
+});
 
-$: stack(
-  // 以 x 控制节奏密度
-  s(()=> choose(['bd ~','bd sd ~','bd ~ sd ~','bd [~ sd] bd ~']).pick(Math.floor(state.x*3)))
-    .blep({type:'sine'})
-    .gain(()=>0.3 + state.p*0.5)
-    .speed(()=>0.9 + state.x*0.4),
-  lead,
-  air
-)
-._pianoroll({cycles:4})._spectrum({speed:0.5}).gain(0.9)`
+// 为了视觉仍然可用：输出一个安静的占位层（不依赖采样）
+$: stack(s('~')).gain(0.0001)
+._pianoroll({cycles:4})._spectrum({speed:0.5})`
   },
   'tusic': {
     id: 'tusic',
