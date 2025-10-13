@@ -572,84 +572,81 @@ $: stack(s('~')).gain(0.0001)
     id: 'kanye-v4',
     name: 'Kanye Industrial v4',
     description: 'Cold industrial beat + bass + chops + pad. Pencil tweaks params.',
-    code: `// === KANYE Industrial — Pencil-Controlled v4 (NothingPad style) ===
-// 协议：父页 postMessage({type:'pen', x, y, pressure}) // 0..1
+    code: `// === KANYE Industrial — Auto-Play with Pencil Params (WebAudio) ===
+// 父页 postMessage({type:'pen', x, y, pressure}) // 0..1
 globalThis.pen = globalThis.pen ?? { x:0.5, y:0.5, p:0.35 };
 let state = { x: pen.x, y: pen.y, p: pen.p };
 const clamp=v=>Math.max(0,Math.min(1,v)), lerp=(a,b,t)=>a+(b-a)*t;
 
-// 接收 iFrame 外的 Pencil 数据
-window.addEventListener('message', e=>{
-  const d=e.data; if(!d || d.type!=='pen') return;
-  pen.x = clamp(d.x); pen.y = clamp(d.y); pen.p = clamp(d.pressure ?? 0.35);
-});
-// 平滑，避免“颗粒音”
-setInterval(()=>{
-  state.x = lerp(state.x, pen.x, 0.2);
-  state.y = lerp(state.y, pen.y, 0.2);
-  state.p = lerp(state.p, pen.p, 0.2);
-}, 30);
+// 平滑参数
+setInterval(()=>{ state.x=lerp(state.x,pen.x,0.2); state.y=lerp(state.y,pen.y,0.2); state.p=lerp(state.p,pen.p,0.2); },30);
 
-// 根音阶梯（低频推进）
-const roots = [46, 49, 43, 42]; // A#1, C2, G1, F#1
-const rootByY = ()=> roots[Math.floor((1 - state.y) * roots.length) % roots.length];
+// WebAudio 循环播放器（无需 Strudel 采样）
+let ctx, master, dist;
+function ensure(){
+  const C=window.AudioContext||window.webkitAudioContext; if(!C) return null;
+  if(!ctx){ ctx=new C(); master=ctx.createGain(); dist=ctx.createWaveShaper(); master.connect(dist).connect(ctx.destination); master.gain.value=0.6; }
+  if(ctx.state==='suspended') ctx.resume();
+  return ctx;
+}
+function shapeCurve(amount=0){
+  const n=44100; const curve=new Float32Array(n); const k=amount*100+1; const deg=Math.PI/180;
+  for(let i=0;i<n;i++){ const x=i*2/n-1; curve[i]=(1+k)*x/(1+k*Math.abs(x)); }
+  return curve;
+}
 
-// —— 节拍层：冷硬底鼓 + 工业呼吸 ——
-const kickPat = s("bd ~ [~ sd] ~ bd [~ sd] ~ [hh ~]")
-  .gain(()=> 0.55 + state.p*0.35)
-  .speed(()=> 0.82 + state.x*0.46)
-  .crush(()=> 2 + Math.floor(state.x*6))
-  .distort(()=> state.p*0.3)
-  .cut(1);
+let timer=null; let step=0; const roots=[46,49,43,42];
+function loop(){
+  if(!ensure()) return;
+  dist.curve=shapeCurve(state.p*0.6);
+  const base=roots[Math.floor((1-state.y)*roots.length)%roots.length];
+  const bpm=92+Math.floor(state.x*56); // x 控速度
+  const spb=60/bpm; // seconds per beat
+  const now=ctx.currentTime;
+  for(let i=0;i<2;i++){
+    const t=now+i*spb;
+    // kick: 每拍
+    if((step+i)%1===0){ trig(t, 60, 0.35+state.p*0.3, 'sine'); }
+    // snare: 后拍
+    if((step+i)%2===1){ trig(t, 180, 0.18+state.p*0.22, 'triangle'); }
+    // hats: 每 1/2 拍
+    trig(t, 6000*(0.6+state.x*0.7), 0.06+state.p*0.12, 'noise');
+    // bass: 根音 1/2
+    tone(t, midiToHz(base), 0.22+state.p*0.18, 'saw');
+    // chop: 选音
+    const picks=[7,10,12,14]; const k=picks[Math.floor(state.x*picks.length)%picks.length];
+    tone(t+spb*0.25, midiToHz(base+24+k), 0.08+state.p*0.18, 'square');
+  }
+  step=(step+2)%16;
+}
+function midiToHz(m){ return 440*Math.pow(2,(m-69)/12); }
+function tone(at, freq, amp, type){
+  const o=ctx.createOscillator(); const g=ctx.createGain(); o.type=type; o.frequency.setValueAtTime(freq,at);
+  g.gain.setValueAtTime(0.0005,at); g.gain.exponentialRampToValueAtTime(Math.max(0.01,amp*0.2),at+0.01); g.gain.exponentialRampToValueAtTime(0.0001,at+0.18);
+  o.connect(g).connect(master); o.start(at); o.stop(at+0.22);
+}
+function trig(at, freq, amp, kind){
+  if(kind==='noise'){
+    const b=ctx.createBuffer(1, 1*ctx.sampleRate, ctx.sampleRate); const d=b.getChannelData(0); for(let i=0;i<d.length;i++){ d[i]=Math.random()*2-1; }
+    const s=ctx.createBufferSource(); s.buffer=b; const g=ctx.createGain();
+    g.gain.setValueAtTime(0.0005,at); g.gain.exponentialRampToValueAtTime(Math.max(0.01,amp*0.2),at+0.005); g.gain.exponentialRampToValueAtTime(0.0001,at+0.08);
+    s.connect(g).connect(master); s.start(at); s.stop(at+0.1);
+  }else{
+    tone(at, freq, amp, 'sine');
+  }
+}
 
-// —— 低频层：Yeezy 低频推进 ——
-const bassPat = note(()=> midi(rootByY()))
-  .sound("gm_fretless_bass")
-  .gain(()=> 0.3 + state.p*0.5)
-  .lp(()=> 160 + state.x*120)
-  .pan(()=> state.x*0.2 - 0.1)
-  .slow(2);
+// 接收 Pencil 并维持循环
+window.addEventListener('message', e=>{ const d=e.data; if(!d||d.type!=='pen') return; pen.x=clamp(d.x); pen.y=clamp(d.y); pen.p=clamp(d.pressure??0.35); ensure(); });
 
-// —— 切片亮点：金属/合成碎片 ——
-const metalChop = note(()=>{
-  const base = rootByY();
-  const picks = [7, 10, 12, 14];
-  const k = picks[Math.floor(state.x*picks.length) % picks.length];
-  return midi(base + 24 + k);
-})
-  .sound("gm_synth_brass_1")
-  .gain(()=> 0.10 + state.p*0.25)
-  .hp(()=> 2500 + state.x*4500)
-  .shape(()=> 0.2 + state.x*0.6)
-  .pan(()=> (state.x*2 - 1) * 0.5)
-  .slow(0.5)
-  .cut(2);
+// 自动播放：按 Run 立即开始循环
+ensure(); if(timer) clearInterval(timer); timer=setInterval(loop, 120);
 
-// —— 氛围呼吸：合成气垫 ——
-const airyPad = note(()=>{
-  const base = rootByY();
-  const set = [0, 5, 7, 11];
-  const pick = set[Math.floor((state.x*3.1)) % set.length];
-  return midi(base + 36 + pick);
-})
-  .sound("gm_synth_strings_1")
-  .gain(()=> 0.05 + state.p*0.2)
-  .lp(()=> 1200 + state.x*6000)
-  .room(0.7)
-  .slow(4)
-  .cut(3);
-
-// 总装
-$: stack(
-  kickPat,
-  bassPat,
-  metalChop,
-  airyPad
-)
-._pianoroll({ cycles: 8, playhead: 0.4 })
-._spectrum({ thickness: 3, speed: 0.5 })
-._oscilloscope()
-.gain(0.9)`
+// 仅用于可视化：画面组件由父页铺满 iframe 展示
+$: stack(s('~')).gain(0.0001)
+._pianoroll({cycles:8,playhead:0.4})
+._spectrum({thickness:3,speed:0.5})
+._oscilloscope()`
   },
   'tusic': {
     id: 'tusic',
@@ -793,6 +790,12 @@ function loadPatch(patchId, reload = true){
   }
   pad.classList.remove('is-active');
   setStatus('ready');
+  // 选择 Kanye v4 时自动进入可视化铺满模式，其它预设关闭
+  if(patchId === 'kanye-v4'){
+    strudelFrame.classList.add('visual-full');
+  }else{
+    strudelFrame.classList.remove('visual-full');
+  }
 }
 
 function setStatus(state){
