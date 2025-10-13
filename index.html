@@ -463,6 +463,35 @@ let currentPatch = null;
 let audioCtx = null;
 let strudelOriginalParent = null;
 let strudelNextSibling = null;
+let visualFullActive = false;
+
+// 记录初始父节点用于还原
+queueMicrotask(() => {
+  strudelOriginalParent = strudelFrame.parentElement;
+  strudelNextSibling = strudelFrame.nextSibling;
+});
+
+function attachStrudelToPad(){
+  if(visualFullActive) return;
+  if(pad && strudelFrame){
+    pad.appendChild(strudelFrame);
+    strudelFrame.classList.add('visual-full');
+    visualFullActive = true;
+  }
+}
+
+function restoreStrudelToEmbed(){
+  if(!visualFullActive) return;
+  if(strudelOriginalParent){
+    if(strudelNextSibling){
+      strudelOriginalParent.insertBefore(strudelFrame, strudelNextSibling);
+    } else {
+      strudelOriginalParent.appendChild(strudelFrame);
+    }
+    strudelFrame.classList.remove('visual-full');
+    visualFullActive = false;
+  }
+}
 
 function ensureAudioContext(){
   try{
@@ -792,9 +821,9 @@ function loadPatch(patchId, reload = true){
   setStatus('ready');
   // 选择 Kanye v4 时自动进入可视化铺满模式，其它预设关闭
   if(patchId === 'kanye-v4'){
-    strudelFrame.classList.add('visual-full');
+    attachStrudelToPad();
   }else{
-    strudelFrame.classList.remove('visual-full');
+    restoreStrudelToEmbed();
   }
 }
 
@@ -935,7 +964,11 @@ if(testSoundButton){
 
 if(visualBtn){
   visualBtn.addEventListener('click', () => {
-    strudelFrame.classList.toggle('visual-full');
+    if(visualFullActive){
+      restoreStrudelToEmbed();
+    }else{
+      attachStrudelToPad();
+    }
   });
 }
 
