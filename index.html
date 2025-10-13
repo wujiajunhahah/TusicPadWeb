@@ -1,121 +1,484 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Apple Pencil × p5.js × Tone.js — 画着出声</title>
-  <!-- p5.js -->
-  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.3/lib/p5.min.js"></script>
-  <!-- Tone.js -->
-  <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
-  <style>
-    :root { color-scheme: dark; }
-    html, body { margin:0; height:100%; overflow:hidden; background:#000; }
-    #startBtn {
-      position: fixed; inset: 0; margin: auto; width: min(80vw, 320px);
-      height: 56px; font-size: 18px; font-family: system-ui, -apple-system, "SF Pro", "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background:#1f6feb; color:#fff; border:none; border-radius:14px; box-shadow: 0 8px 24px rgba(31,111,235,0.35);
-    }
-    #hint { position: fixed; top: 10px; left: 12px; color:#bbb; font:14px/1.3 system-ui; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TusicPadWeb — Pencil ▶︎ Strudel</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#05070c;
+    --panel:rgba(12,15,25,0.72);
+    --panel-strong:rgba(17,22,36,0.88);
+    --stroke:rgba(255,255,255,0.08);
+    --accent:#7f5af0;
+    --accent-soft:rgba(127,90,240,0.45);
+    --success:#3ce1a4;
+    --text-primary:#f6f7ff;
+    --text-muted:rgba(255,255,255,0.62);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;}
+  body{
+    font:15px/1.6 "SF Pro Display", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display:flex;
+    background:
+      radial-gradient(circle at 20% -10%, rgba(127,90,240,0.28), transparent 48%),
+      radial-gradient(circle at 85% 15%, rgba(60,225,164,0.22), transparent 55%),
+      linear-gradient(160deg, #05070c 0%, #090d17 45%, #111a2d 100%);
+    color:var(--text-primary);
+    -webkit-font-smoothing:antialiased;
+    touch-action:manipulation;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:radial-gradient(circle at 50% 0%, rgba(255,255,255,0.04), transparent 65%);
+    pointer-events:none;
+    z-index:-1;
+  }
+  .layout{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+  }
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:clamp(18px, 4vw, 30px) clamp(18px, 6vw, 40px) clamp(12px, 3vw, 20px);
+    gap:18px;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:18px;
+  }
+  .logo{
+    width:52px;
+    height:52px;
+    border-radius:18px;
+    background:
+      linear-gradient(150deg, rgba(127,90,240,0.95), rgba(60,225,164,0.8));
+    display:grid;
+    place-items:center;
+    font-size:22px;
+    box-shadow:0 16px 40px rgba(80,44,200,0.35);
+  }
+  .brand h1{
+    margin:0;
+    font-size:clamp(22px, 4.6vw, 32px);
+    font-weight:600;
+    letter-spacing:0.01em;
+  }
+  .brand p{
+    margin:6px 0 0;
+    font-size:14px;
+    color:var(--text-muted);
+  }
+  .status{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+  button{
+    appearance:none;
+    border:none;
+    border-radius:18px;
+    font:500 15px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+    cursor:pointer;
+    transition:transform 0.2s ease, box-shadow 0.3s ease, background 0.3s ease, border 0.3s ease;
+  }
+  button:focus-visible{outline:2px solid var(--accent); outline-offset:3px;}
+  .primary{
+    padding:12px 24px;
+    background:linear-gradient(140deg, rgba(127,90,240,0.95), rgba(103,120,255,0.92));
+    color:#fff;
+    box-shadow:0 18px 40px rgba(70,40,180,0.35);
+  }
+  .primary:hover{transform:translateY(-1px); box-shadow:0 22px 48px rgba(70,40,180,0.42);}
+  .primary:active{transform:translateY(0); box-shadow:0 12px 28px rgba(70,40,180,0.32);}
+  .ghost{
+    padding:10px 20px;
+    background:rgba(255,255,255,0.08);
+    color:var(--text-primary);
+    border:1px solid rgba(255,255,255,0.12);
+  }
+  .ghost:hover{background:rgba(255,255,255,0.12);}
+  .ghost:active{background:rgba(255,255,255,0.16);}
+  .pill{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 16px;
+    border-radius:999px;
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.08);
+    font-size:14px;
+    letter-spacing:0.01em;
+    transition:background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
+  }
+  .pill .dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background:#676a74;
+    box-shadow:0 0 0 rgba(127,90,240,0.0);
+    transition:background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+  }
+  .pill[data-state="waiting"]{background:rgba(255,255,255,0.04);}
+  .pill[data-state="ready"]{
+    border-color:rgba(127,90,240,0.45);
+    box-shadow:0 12px 28px rgba(45,30,120,0.28);
+  }
+  .pill[data-state="ready"] .dot{
+    background:var(--accent);
+    box-shadow:0 0 12px rgba(127,90,240,0.8);
+  }
+  .pill[data-state="live"]{
+    background:rgba(60,225,164,0.18);
+    border-color:rgba(60,225,164,0.6);
+    box-shadow:0 16px 32px rgba(30,120,80,0.38);
+  }
+  .pill[data-state="live"] .dot{
+    background:var(--success);
+    box-shadow:0 0 16px rgba(60,225,164,0.85);
+    transform:scale(1.15);
+  }
+  main{
+    flex:1;
+    display:grid;
+    grid-template-rows:minmax(320px, 6fr) minmax(260px, 4fr);
+    gap:clamp(18px, 3vw, 30px);
+    padding:0 clamp(18px, 6vw, 40px) clamp(18px, 6vw, 40px);
+  }
+  .surface{
+    position:relative;
+    border-radius:28px;
+    overflow:hidden;
+    background:var(--panel);
+    border:1px solid var(--stroke);
+    box-shadow:0 24px 60px rgba(5,12,30,0.45);
+  }
+  #pad{
+    touch-action:none;
+    background:
+      radial-gradient(120% 150% at 18% 20%, rgba(127,90,240,0.18), transparent 55%),
+      radial-gradient(140% 160% at 88% 12%, rgba(60,225,164,0.16), transparent 62%),
+      rgba(8,11,20,0.85);
+  }
+  #pad::after{
+    content:"";
+    position:absolute;
+    inset:-40% -30% -30% -40%;
+    pointer-events:none;
+    background:radial-gradient(circle at 20% 20%, rgba(127,90,240,0.3), transparent 45%),
+               radial-gradient(circle at 80% 30%, rgba(60,225,164,0.28), transparent 52%);
+    opacity:0.25;
+    transition:opacity 0.4s ease;
+  }
+  #pad.is-active::after{opacity:0.55;}
+  canvas{width:100%;height:100%;display:block;}
+  .hud{
+    position:absolute;
+    top:22px;
+    left:22px;
+    max-width:min(360px, 70vw);
+    padding:18px 20px;
+    border-radius:22px;
+    background:var(--panel-strong);
+    border:1px solid rgba(255,255,255,0.12);
+    backdrop-filter:blur(18px) saturate(140%);
+    pointer-events:none;
+    box-shadow:0 24px 40px rgba(6,8,16,0.45);
+  }
+  .hud strong{display:block;font-size:16px;font-weight:600;margin-bottom:6px;letter-spacing:0.01em;}
+  .hud p{margin:0;font-size:13px;color:var(--text-muted);}
+  .hud .tips{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;}
+  .hud .tips span{
+    font-size:12px;
+    padding:6px 10px;
+    border-radius:14px;
+    background:rgba(255,255,255,0.08);
+    letter-spacing:0.02em;
+  }
+  .embed iframe{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    border:0;
+  }
+  .frame-label{
+    position:absolute;
+    top:20px;
+    left:20px;
+    padding:10px 16px;
+    border-radius:16px;
+    background:rgba(0,0,0,0.45);
+    border:1px solid rgba(255,255,255,0.12);
+    color:var(--text-muted);
+    font-size:13px;
+    letter-spacing:0.02em;
+    pointer-events:none;
+  }
+  #gate{
+    position:fixed;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    background:rgba(6,10,22,0.88);
+    backdrop-filter:blur(22px);
+    z-index:20;
+  }
+  #gate[hidden]{display:none;}
+  .gate-card{
+    max-width:420px;
+    padding:32px clamp(24px, 6vw, 40px);
+    border-radius:28px;
+    background:rgba(12,16,28,0.92);
+    border:1px solid rgba(255,255,255,0.12);
+    box-shadow:0 32px 80px rgba(6,8,18,0.65);
+    text-align:center;
+  }
+  .gate-card h2{
+    margin:0 0 12px;
+    font-size:clamp(22px, 4vw, 28px);
+    font-weight:600;
+  }
+  .gate-card p{
+    margin:0 0 22px;
+    color:var(--text-muted);
+    font-size:14px;
+  }
+  @media (max-width:900px){
+    header{flex-direction:column;align-items:flex-start;}
+    .status{width:100%;justify-content:flex-start;}
+    main{grid-template-rows:minmax(280px, 1fr) minmax(320px, 1fr);}
+    .hud{max-width:90%;top:18px;left:18px;padding:16px 18px;}
+  }
+  @media (max-width:600px){
+    body{font-size:14px;}
+    .brand{gap:14px;}
+    .logo{width:44px;height:44px;font-size:20px;}
+    .brand h1{font-size:22px;}
+    .hud strong{font-size:15px;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important;scroll-behavior:auto !important;}
+  }
+</style>
 </head>
 <body>
-  <button id="startBtn">点我启动音频（iPad 需要先点一下）</button>
-  <div id="hint">横向 = 节奏密度 | 纵向 = 音高 | 压力 = 音量。用 Apple Pencil 在画布上移动。</div>
+<div class="layout">
+  <header>
+    <div class="brand">
+      <div class="logo" aria-hidden="true">🎶</div>
+      <div>
+        <h1>TusicPadWeb</h1>
+        <p>Apple Pencil → Strudel 音乐互动外壳</p>
+      </div>
+    </div>
+    <div class="status">
+      <button id="clear" class="ghost" type="button">清空画布</button>
+      <span id="status-pill" class="pill" data-state="waiting">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="status-text">等待开始…</span>
+      </span>
+    </div>
+  </header>
 
-  <script>
-  /* global Tone */
+  <main>
+    <section id="pad" class="surface" aria-label="Pencil 捕获区域">
+      <canvas id="cv"></canvas>
+      <div class="hud">
+        <strong>在此绘制，即刻控制 Strudel</strong>
+        <p>Apple Pencil 的横向、纵向与压力值会实时传给下方的 Strudel REPL。</p>
+        <div class="tips">
+          <span>横向 → 节奏速度</span>
+          <span>纵向 → 音高</span>
+          <span>压力 → 音量 / 质感</span>
+        </div>
+      </div>
+    </section>
 
-  // —— 音频引擎 ——
-  let started = false;
-  let synth, hat;
+    <section class="surface embed" aria-label="Strudel REPL">
+      <iframe id="strudel" src="https://strudel.cc/repl" allow="autoplay; clipboard-read; clipboard-write" title="Strudel REPL"></iframe>
+      <div class="frame-label">Strudel REPL · 请粘贴接收片段并点击 Run</div>
+    </section>
+  </main>
+</div>
 
-  // —— 笔迹状态（目标 & 平滑后） ——
-  const target = { x: 0.5, y: 0.5, p: 0.2 };
-  const state  = { x: 0.5, y: 0.5, p: 0.2 };
-  let lastTS   = 0;
+<div id="gate" role="dialog" aria-modal="true">
+  <div class="gate-card">
+    <h2>准备“画着演奏”了吗？</h2>
+    <p>点击开始后，请在下方 Strudel REPL 粘贴接收片段并点一下 Run，以解锁音频播放。</p>
+    <button id="open" class="primary" type="button">开始演奏</button>
+  </div>
+</div>
 
-  // —— 启动按钮 ——
-  const startBtn = document.getElementById('startBtn');
-  startBtn.addEventListener('click', async () => {
-    try {
-      await Tone.start();
-      synth = new Tone.Synth({
-        oscillator: { type: "triangle" },
-        envelope: { attack: 0.01, decay: 0.05, sustain: 0.25, release: 0.45 }
-      }).toDestination();
+<script>
+const pad = document.getElementById('pad');
+const canvas = document.getElementById('cv');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
+const strudelFrame = document.getElementById('strudel');
+const statusPill = document.getElementById('status-pill');
+const statusText = document.getElementById('status-text');
+const clearButton = document.getElementById('clear');
+const gate = document.getElementById('gate');
+const openButton = document.getElementById('open');
 
-      hat = new Tone.NoiseSynth({
-        noise: { type: "white" },
-        envelope: { attack: 0.001, decay: 0.05, sustain: 0 }
-      }).toDestination();
+const stateTextMap = {
+  waiting: '等待开始…',
+  ready: '准备就绪，等待 Pencil',
+  live: '实时传输中'
+};
 
-      // 节奏：每 1/2 拍触发，横向控制密度
-      Tone.Transport.scheduleRepeat(() => {
-        const dens = 2 + Math.floor(state.x * 6); // 2~8
-        const now = Tone.now();
-        for (let i = 0; i < dens; i++) {
-          hat.triggerAttackRelease("16n", now + (i * 0.5) / dens);
-        }
-      }, "0.5");
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let fadeHandle = null;
+let lastSent = 0;
+let hue = 0;
+let statusTimeout;
 
-      Tone.Transport.start();
-      started = true;
-      startBtn.remove();
-    } catch (e) {
-      alert("启动失败：请再次点击，或检查是否开启了低电量/静音模式。");
-      console.error(e);
-    }
-  });
+function setStatus(state){
+  statusPill.dataset.state = state;
+  statusText.textContent = stateTextMap[state] || '';
+}
 
-  // —— p5.js 画布 ——
-  let W = 0, H = 0;
-  function setup() {
-    createCanvas(windowWidth, windowHeight);
-    colorMode(HSB, 360, 100, 100, 1);
-    noStroke();
-    background(0);
+function resizeCanvas(){
+  const rect = pad.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.max(1, Math.floor(rect.width * dpr));
+  const height = Math.max(1, Math.floor(rect.height * dpr));
+  if(canvas.width !== width || canvas.height !== height){
+    canvas.width = width;
+    canvas.height = height;
   }
+}
 
-  function windowResized() {
-    resizeCanvas(windowWidth, windowHeight);
+function clearCanvas(){
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = 'rgba(6, 8, 16, 1)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+  hue = 0;
+}
+
+function fadeFrame(){
+  ctx.fillStyle = 'rgba(5, 8, 18, 0.12)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  fadeHandle = requestAnimationFrame(fadeFrame);
+}
+
+function drawDot(x, y, pressure){
+  const radius = (8 + pressure * 16) * (window.devicePixelRatio || 1);
+  ctx.fillStyle = `hsla(${hue % 360}, 88%, 62%, ${0.35 + pressure * 0.45})`;
+  ctx.beginPath();
+  ctx.arc(x * canvas.width, y * canvas.height, radius, 0, Math.PI * 2);
+  ctx.fill();
+  hue += 1.6;
+}
+
+function sendPen(x, y, pressure){
+  const target = strudelFrame.contentWindow;
+  if(!target) return;
+  target.postMessage({ type: 'pen', x, y, pressure, t: performance.now() }, '*');
+}
+
+function handleInteraction(){
+  pad.classList.add('is-active');
+  setStatus('live');
+  clearTimeout(statusTimeout);
+  statusTimeout = setTimeout(()=>{
+    pad.classList.remove('is-active');
+    setStatus('ready');
+  }, 1100);
+}
+
+function pointerEventToCanvas(e){
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+  const pressure = typeof e.pressure === 'number' ? e.pressure : 0.35;
+  return { x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)), pressure: Math.min(1, Math.max(0, pressure)) };
+}
+
+pad.addEventListener('pointerdown', event => {
+  if(event.pointerType !== 'pen') return;
+  const { x, y, pressure } = pointerEventToCanvas(event);
+  drawDot(x, y, pressure);
+  sendPen(x, y, pressure);
+  handleInteraction();
+});
+
+pad.addEventListener('pointermove', event => {
+  if(event.pointerType !== 'pen' || event.buttons === 0) return;
+  const { x, y, pressure } = pointerEventToCanvas(event);
+  drawDot(x, y, pressure);
+  const now = performance.now();
+  if(now - lastSent > 16){
+    sendPen(x, y, pressure);
+    lastSent = now;
   }
+  handleInteraction();
+}, { passive: true });
 
-  // 用 Pointer Events 获取 Apple Pencil 的 pressure/x/y
-  window.addEventListener('pointermove', (e) => {
-    if (e.pointerType !== 'pen') return;
-    const rect = document.body.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    target.x = Math.max(0, Math.min(1, x));
-    target.y = Math.max(0, Math.min(1, y));
-    target.p = (typeof e.pressure === 'number') ? e.pressure : 0.3;
-  }, { passive: true });
+pad.addEventListener('pointerup', () => {
+  clearTimeout(statusTimeout);
+  statusTimeout = setTimeout(()=>{
+    pad.classList.remove('is-active');
+    setStatus('ready');
+  }, 600);
+});
 
-  function draw() {
-    // 平滑插值（让停笔也有尾音/连贯）
-    state.x = state.x + (target.x - state.x) * 0.2;
-    state.y = state.y + (target.y - state.y) * 0.2;
-    state.p = state.p + (target.p - state.p) * 0.2;
+pad.addEventListener('pointerleave', () => {
+  clearTimeout(statusTimeout);
+  pad.classList.remove('is-active');
+  statusTimeout = setTimeout(()=> setStatus('ready'), 600);
+});
 
-    // 可视化：颜色=横向，亮度=压力
-    const hue = 360 * state.x;
-    const bri = 20 + state.p * 70;
-    fill(hue, 90, bri, 0.3);
-    circle(state.x * width, state.y * height, 18 + state.p * 48);
+clearButton.addEventListener('click', () => {
+  clearCanvas();
+  pad.classList.remove('is-active');
+  setStatus('ready');
+});
 
-    // 演奏（每隔几帧触发一次，降低开销）
-    if (started && frameCount % 3 === 0) {
-      const freq = 180 + (1 - state.y) * 720; // 180~900Hz
-      const volDb = -28 + state.p * 24;       // -28 ~ -4 dB
-      synth.volume.value = volDb;
-      synth.triggerAttackRelease(freq, "16n");
-    }
-
-    // 留下拖影
-    fill(0, 0, 0, 0.08);
-    rect(0, 0, width, height);
+openButton.addEventListener('click', () => {
+  gate.setAttribute('hidden', 'true');
+  setStatus('ready');
+  const target = strudelFrame.contentWindow;
+  if(target){
+    target.postMessage({ type: 'hint', action: 'focus' }, '*');
   }
-  </script>
+});
+
+window.addEventListener('resize', () => {
+  resizeCanvas();
+});
+
+window.addEventListener('orientationchange', () => {
+  setTimeout(resizeCanvas, 250);
+});
+
+resizeCanvas();
+clearCanvas();
+if(!reduceMotion){
+  fadeHandle = requestAnimationFrame(fadeFrame);
+}
+
+window.addEventListener('beforeunload', () => {
+  if(fadeHandle){
+    cancelAnimationFrame(fadeHandle);
+  }
+});
+
+</script>
 </body>
 </html>
