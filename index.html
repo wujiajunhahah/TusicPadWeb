@@ -55,6 +55,18 @@
     pointer-events:none;
     z-index:-1;
   }
+  /* Visual Full: 让 REPL 覆盖在画布上，仅用于可视化展示 */
+  #strudel.visual-full{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    border:0;
+    border-radius:26px;
+    z-index:10;
+    pointer-events:none; /* 不拦截 Pencil 事件 */
+    opacity:1;
+  }
   header{
     display:flex;
     align-items:center;
@@ -364,11 +376,13 @@
 <div class="actions">
     <button id="clear" type="button">Clear Canvas</button>
     <button id="test-sound" type="button" aria-label="Play a short test beep">Test Sound</button>
+    <button id="btn-visual" type="button" aria-label="Toggle Visual Full overlay">Visual Full</button>
     <button id="open-strudel" type="button" aria-label="Open Strudel in new tab">Open Strudel</button>
     <div class="preset-switch" role="group" aria-label="Strudel patch presets">
       <button class="preset" data-patch="synth" aria-pressed="true">Synth</button>
       <button class="preset" data-patch="tusic" aria-pressed="false">Default</button>
       <button class="preset" data-patch="steel-halo" aria-pressed="false">Steel Halo</button>
+      <button class="preset" data-patch="kanye-v4" aria-pressed="false">Kanye v4</button>
     </div>
     <span id="status-pill" data-state="waiting">
       <span class="dot" aria-hidden="true"></span>
@@ -425,6 +439,7 @@ const statusText = document.getElementById('status-text');
 const clearButton = document.getElementById('clear');
 const openStrudelButton = document.getElementById('open-strudel');
 const testSoundButton = document.getElementById('test-sound');
+const visualBtn = document.getElementById('btn-visual');
 const gate = document.getElementById('gate');
 const openButton = document.getElementById('open');
 const presetButtons = Array.from(document.querySelectorAll('.preset[data-patch]'));
@@ -446,6 +461,8 @@ let lastSent = 0;
 let settleTimer;
 let currentPatch = null;
 let audioCtx = null;
+let strudelOriginalParent = null;
+let strudelNextSibling = null;
 
 function ensureAudioContext(){
   try{
@@ -550,6 +567,89 @@ window.addEventListener('message', (e)=>{
 // 为了视觉仍然可用：输出一个安静的占位层（不依赖采样）
 $: stack(s('~')).gain(0.0001)
 ._pianoroll({cycles:4})._spectrum({speed:0.5})`
+  },
+  'kanye-v4': {
+    id: 'kanye-v4',
+    name: 'Kanye Industrial v4',
+    description: 'Cold industrial beat + bass + chops + pad. Pencil tweaks params.',
+    code: `// === KANYE Industrial — Pencil-Controlled v4 (NothingPad style) ===
+// 协议：父页 postMessage({type:'pen', x, y, pressure}) // 0..1
+globalThis.pen = globalThis.pen ?? { x:0.5, y:0.5, p:0.35 };
+let state = { x: pen.x, y: pen.y, p: pen.p };
+const clamp=v=>Math.max(0,Math.min(1,v)), lerp=(a,b,t)=>a+(b-a)*t;
+
+// 接收 iFrame 外的 Pencil 数据
+window.addEventListener('message', e=>{
+  const d=e.data; if(!d || d.type!=='pen') return;
+  pen.x = clamp(d.x); pen.y = clamp(d.y); pen.p = clamp(d.pressure ?? 0.35);
+});
+// 平滑，避免“颗粒音”
+setInterval(()=>{
+  state.x = lerp(state.x, pen.x, 0.2);
+  state.y = lerp(state.y, pen.y, 0.2);
+  state.p = lerp(state.p, pen.p, 0.2);
+}, 30);
+
+// 根音阶梯（低频推进）
+const roots = [46, 49, 43, 42]; // A#1, C2, G1, F#1
+const rootByY = ()=> roots[Math.floor((1 - state.y) * roots.length) % roots.length];
+
+// —— 节拍层：冷硬底鼓 + 工业呼吸 ——
+const kickPat = s("bd ~ [~ sd] ~ bd [~ sd] ~ [hh ~]")
+  .gain(()=> 0.55 + state.p*0.35)
+  .speed(()=> 0.82 + state.x*0.46)
+  .crush(()=> 2 + Math.floor(state.x*6))
+  .distort(()=> state.p*0.3)
+  .cut(1);
+
+// —— 低频层：Yeezy 低频推进 ——
+const bassPat = note(()=> midi(rootByY()))
+  .sound("gm_fretless_bass")
+  .gain(()=> 0.3 + state.p*0.5)
+  .lp(()=> 160 + state.x*120)
+  .pan(()=> state.x*0.2 - 0.1)
+  .slow(2);
+
+// —— 切片亮点：金属/合成碎片 ——
+const metalChop = note(()=>{
+  const base = rootByY();
+  const picks = [7, 10, 12, 14];
+  const k = picks[Math.floor(state.x*picks.length) % picks.length];
+  return midi(base + 24 + k);
+})
+  .sound("gm_synth_brass_1")
+  .gain(()=> 0.10 + state.p*0.25)
+  .hp(()=> 2500 + state.x*4500)
+  .shape(()=> 0.2 + state.x*0.6)
+  .pan(()=> (state.x*2 - 1) * 0.5)
+  .slow(0.5)
+  .cut(2);
+
+// —— 氛围呼吸：合成气垫 ——
+const airyPad = note(()=>{
+  const base = rootByY();
+  const set = [0, 5, 7, 11];
+  const pick = set[Math.floor((state.x*3.1)) % set.length];
+  return midi(base + 36 + pick);
+})
+  .sound("gm_synth_strings_1")
+  .gain(()=> 0.05 + state.p*0.2)
+  .lp(()=> 1200 + state.x*6000)
+  .room(0.7)
+  .slow(4)
+  .cut(3);
+
+// 总装
+$: stack(
+  kickPat,
+  bassPat,
+  metalChop,
+  airyPad
+)
+._pianoroll({ cycles: 8, playhead: 0.4 })
+._spectrum({ thickness: 3, speed: 0.5 })
+._oscilloscope()
+.gain(0.9)`
   },
   'tusic': {
     id: 'tusic',
@@ -827,6 +927,12 @@ if(openStrudelButton){
 if(testSoundButton){
   testSoundButton.addEventListener('click', () => {
     playTestBeep();
+  });
+}
+
+if(visualBtn){
+  visualBtn.addEventListener('click', () => {
+    strudelFrame.classList.toggle('visual-full');
   });
 }
 
