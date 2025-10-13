@@ -6,8 +6,7 @@
 <title>TusicPadWeb — Pencil ▶︎ Strudel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link href="https://fonts.cdnfonts.com/css/ndot-55" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Inter:wght@400;500;600&family=Recursive:wght@400;500&family=Space+Grotesk:wght@400;500;600&family=VT323&display=swap" rel="stylesheet">
 <style>
   :root{
     color-scheme:dark;
@@ -22,11 +21,14 @@
     --accent-faint:rgba(255,0,79,0.18);
     --text:#f5f6f7;
     --muted:rgba(243,244,246,0.58);
+    --font-display:'DotGothic16','VT323','Recursive','Space Grotesk',monospace;
+    --font-ui:'Space Grotesk','Inter','SF Pro Display',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --font-mono:'Recursive','IBM Plex Mono','Menlo','SFMono-Regular',monospace;
   }
   *,*::before,*::after{box-sizing:border-box;}
   html,body{margin:0;min-height:100%;}
   body{
-    font-family:'Inter','SF Pro Display',system-ui,-apple-system,'Segoe UI',sans-serif;
+    font-family:var(--font-ui);
     background:var(--bg);
     color:var(--text);
     min-height:100vh;
@@ -72,7 +74,7 @@
     border:1px solid var(--border-strong);
     display:grid;
     place-items:center;
-    font-family:'NDot 55','NDot 44','Inter',monospace;
+    font-family:var(--font-display);
     font-size:19px;
     letter-spacing:0.46em;
     position:relative;
@@ -91,14 +93,14 @@
     text-transform:uppercase;
   }
   .brand-text span{
-    font-family:'NDot 55','NDot 44','Inter',monospace;
+    font-family:var(--font-display);
     font-size:clamp(20px,3.6vw,28px);
-    letter-spacing:0.44em;
+    letter-spacing:0.36em;
   }
   .brand-text em{
     font-style:normal;
     font-size:12px;
-    letter-spacing:0.52em;
+    letter-spacing:0.42em;
     color:var(--muted);
   }
   .actions{
@@ -120,7 +122,7 @@
     letter-spacing:0.24em;
     text-transform:uppercase;
     transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease;
-    font-family:'NDot 55','NDot 44','Inter',monospace;
+    font-family:var(--font-display);
   }
   button:hover{border-color:var(--accent); color:var(--accent);}
   button:focus-visible{outline:2px dashed var(--accent); outline-offset:4px;}
@@ -135,7 +137,7 @@
     font-size:12px;
     letter-spacing:0.32em;
     text-transform:uppercase;
-    font-family:'NDot 55','NDot 44','Inter',monospace;
+    font-family:var(--font-display);
   }
   #status-pill .dot{
     width:10px;
@@ -199,7 +201,7 @@
     letter-spacing:0.28em;
     font-size:11px;
     pointer-events:none;
-    font-family:'NDot 55','NDot 44','Inter',monospace;
+    font-family:var(--font-display);
   }
   .hud strong{font-size:15px; letter-spacing:0.42em;}
   .hud span{color:var(--muted);}
@@ -230,7 +232,7 @@
     font-size:11px;
     color:var(--muted);
     pointer-events:none;
-    font-family:'NDot 55','NDot 44','Inter',monospace;
+    font-family:var(--font-display);
   }
   #gate{
     position:fixed;
@@ -257,7 +259,7 @@
     gap:20px;
     text-transform:uppercase;
     letter-spacing:0.32em;
-    font-family:'NDot 55','NDot 44','Inter',monospace;
+    font-family:var(--font-display);
   }
   .gate-card h2{margin:0;font-size:18px;}
   .gate-card p{margin:0;color:var(--muted);font-size:12px;}

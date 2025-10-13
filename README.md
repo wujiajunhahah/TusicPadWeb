@@ -4,7 +4,7 @@
 
 ## 特性亮点
 - Nothing 风格界面：黑色点阵背景、虚线网格与极简红色强调，贴合 Nothing Phone / CMF 视觉语言。
-- 全站采用官方 `NDot` 字体（通过 CDN 载入）搭配 `Inter` 正文，保留 Nothing 标志性点阵排版。
+- 字体栈采用开源组合：`DotGothic16` / `VT323`（点阵感显示字体）+ `Space Grotesk` / `Inter` 正文字体 + `Recursive` 等宽字体，既贴近 Nothing 质感又可合法使用。
 - 上半区画布捕获 Pencil 的 `x / y / pressure` 并节流到约 60fps 发送至 Strudel，视觉尾迹为柔和红光点阵。
 - 下半区嵌入官方 Strudel REPL，真实生成音频与可视化，无需任何自建合成器。
 - Strudel REPL 默认载入 **TusicPad Patch**（底鼓 / 旋律 / hi-hat + 笔压映射），按下 Run 即可听到节奏。
@@ -97,7 +97,7 @@ $: stack(
 
 ## 设计说明
 - 色彩系统：主色 `#FF004F`（Nothing 红），辅色 `#FF7A00` 与柔和琥珀，用于尾迹渐变与交互反馈。
-- 版式：品牌/提示均使用 `NDot` 点阵字体，动作控件保持全大写与长字距，强化工业化节奏。
+- 版式：显示与按钮使用 `DotGothic16`/`VT323` 点阵风格，正文采用 `Space Grotesk`，等宽场景用 `Recursive`，保留工业节奏同时避免版权风险。
 - 组件：画布、状态条、启动面板统一使用虚线描边与点阵背景，呼应 Nothing 透明壳与打孔视觉。
 
 ---
