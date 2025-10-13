@@ -366,7 +366,8 @@
     <button id="test-sound" type="button" aria-label="Play a short test beep">Test Sound</button>
     <button id="open-strudel" type="button" aria-label="Open Strudel in new tab">Open Strudel</button>
     <div class="preset-switch" role="group" aria-label="Strudel patch presets">
-      <button class="preset" data-patch="tusic" aria-pressed="true">Default</button>
+      <button class="preset" data-patch="synth" aria-pressed="true">Synth</button>
+      <button class="preset" data-patch="tusic" aria-pressed="false">Default</button>
       <button class="preset" data-patch="steel-halo" aria-pressed="false">Steel Halo</button>
     </div>
     <span id="status-pill" data-state="waiting">
@@ -391,13 +392,13 @@
   </section>
   <section class="surface embed" aria-label="Strudel REPL">
     <iframe id="strudel" src="about:blank" allow="autoplay; clipboard-read; clipboard-write" title="Strudel REPL"></iframe>
-    <div class="frame-label">Strudel Repl · Default Patch Ready · Press Run</div>
+    <div class="frame-label">Strudel Repl · Synth Fallback Ready · Press Run</div>
   </section>
 
   <section class="preset-info" aria-live="polite">
     <div class="preset-meta">
-      <span class="preset-title" id="preset-name">Default TusicPad Patch</span>
-      <p id="preset-desc">Kick + strings + hats with Pencil mapped to rhythm / pitch / pressure.</p>
+      <span class="preset-title" id="preset-name">Synth Fallback Patch</span>
+      <p id="preset-desc">Pure synth oscillators mapped to x/y/pressure — no samples required.</p>
     </div>
     <div class="preset-steps" id="preset-steps">
       <span>① 在下方 Strudel 中按一次 <strong>Run ▶︎</strong> 解锁声音</span>
@@ -478,6 +479,60 @@ function playTestBeep(){
 }
 
 const patches = {
+  'synth': {
+    id: 'synth',
+    name: 'Synth Fallback Patch',
+    description: 'Pure synth oscillators mapped to x/y/pressure — no samples required.',
+    code: `// === Synth Fallback: no external samples ===
+globalThis.pen = { x:0.5, y:0.5, p:0.0 };
+let state = { x:0.5, y:0.5, p:0.0 };
+const lerp = (a,b,t)=>a+(b-a)*t;
+
+window.addEventListener('message', (e)=>{
+  const d = e.data;
+  if(!d || d.type!=='pen') return;
+  pen.x = Math.max(0, Math.min(1, d.x));
+  pen.y = Math.max(0, Math.min(1, d.y));
+  pen.p = Math.max(0, Math.min(1, d.pressure || 0));
+});
+
+setInterval(()=>{
+  state.x = lerp(state.x, pen.x, 0.2);
+  state.y = lerp(state.y, pen.y, 0.2);
+  state.p = lerp(state.p, pen.p, 0.24);
+}, 28);
+
+// 合成鼓: blep/kick，无需采样
+const kick = s('~').blep({type:'sine'}).shape(()=>0.5+state.p*0.4)
+  .gain(()=>0.4 + state.p*0.6)
+  .lp(()=>200 + state.p*800);
+
+// 主音: 按 y 选音高，x 决定波形混比
+const baseMidi = ()=> 48 + Math.floor((1 - state.y) * 18);
+const lead = note(()=> midi(baseMidi()))
+  .blep({type:'saw'})
+  .mix(()=> state.x)
+  .shape(()=> 0.2 + state.p*0.6)
+  .pan(()=> state.x*2-1)
+  .gain(()=> 0.25 + state.p*0.5);
+
+// 高频噪声：跟随 x/p 变化
+const air = noise()
+  .hp(()=> 4000 + state.x*4000)
+  .gain(()=> state.p*0.25)
+  .slow(2);
+
+$: stack(
+  // 以 x 控制节奏密度
+  s(()=> choose(['bd ~','bd sd ~','bd ~ sd ~','bd [~ sd] bd ~']).pick(Math.floor(state.x*3)))
+    .blep({type:'sine'})
+    .gain(()=>0.3 + state.p*0.5)
+    .speed(()=>0.9 + state.x*0.4),
+  lead,
+  air
+)
+._pianoroll({cycles:4})._spectrum({speed:0.5}).gain(0.9)`
+  },
   'tusic': {
     id: 'tusic',
     name: 'Default TusicPad Patch',
@@ -770,7 +825,7 @@ presetButtons.forEach(btn => {
 window.addEventListener('resize', resizeCanvas, { passive: true });
 window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 280));
 
-loadPatch('tusic', false);
+loadPatch('synth', false);
 resizeCanvas();
 clearCanvas();
 if(!reduceMotion){
