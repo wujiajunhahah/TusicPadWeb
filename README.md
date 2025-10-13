@@ -3,7 +3,8 @@
 用 **Apple Pencil** 在网页上“画着演奏”，实时驱动官方 **Strudel REPL**（strudel.cc/repl）生成音乐与可视化。
 
 ## 特性亮点
-- Nothing 风格界面：黑色点阵背景、Dot Matrix 字体和极简红色强调，贴合 Nothing Phone/CMF 的视觉语言。
+- Nothing 风格界面：黑色点阵背景、虚线网格与极简红色强调，贴合 Nothing Phone / CMF 视觉语言。
+- 全站采用官方 `NDot` 字体（通过 CDN 载入）搭配 `Inter` 正文，保留 Nothing 标志性点阵排版。
 - 上半区画布捕获 Pencil 的 `x / y / pressure` 并节流到约 60fps 发送至 Strudel，视觉尾迹为柔和红光点阵。
 - 下半区嵌入官方 Strudel REPL，真实生成音频与可视化，无需任何自建合成器。
 - 顶部提供 Nothing 风状态条与 `CLEAR CANVAS` 控件，覆盖式开始面板提醒用户解锁音频。
@@ -93,9 +94,9 @@ $: stack(
 ---
 
 ## 设计说明
-- 采用 Nothing 标志性的点阵网格、虚线描边与红色强调，保持“透明工业”风格。
-- 顶部状态条在 `READY`/`LIVE` 间切换，并以红色点提示实时传输。
-- 启动覆盖层为虚线框卡片，凸显硬件感，适合直接部署在 GitHub Pages 展示。
+- 色彩系统：主色 `#FF004F`（Nothing 红），辅色 `#FF7A00` 与柔和琥珀，用于尾迹渐变与交互反馈。
+- 版式：品牌/提示均使用 `NDot` 点阵字体，动作控件保持全大写与长字距，强化工业化节奏。
+- 组件：画布、状态条、启动面板统一使用虚线描边与点阵背景，呼应 Nothing 透明壳与打孔视觉。
 
 ---
 
