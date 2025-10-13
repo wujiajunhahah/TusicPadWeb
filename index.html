@@ -389,7 +389,7 @@
     </div>
   </section>
   <section class="surface embed" aria-label="Strudel REPL">
-    <iframe id="strudel" src="https://strudel.cc/?code=%2F%2F%20%3D%3D%3D%20TusicPad%20Receiver%20%3D%3D%3D%0AglobalThis.pen%20%3D%20%7B%20x%3A0.5%2C%20y%3A0.5%2C%20p%3A0.0%20%7D%3B%0Alet%20state%20%3D%20%7B%20x%3A0.5%2C%20y%3A0.5%2C%20p%3A0.0%20%7D%3B%0Aconst%20lerp%20%3D%20(a%2Cb%2Ct)%3D%3Ea%2B(b-a)*t%3B%0A%0Awindow.addEventListener('message'%2C%20(e)%3D%3E%7B%0A%20%20const%20d%20%3D%20e.data%3B%0A%20%20if(!d%20%7C%7C%20d.type!%3D%3D'pen')%20return%3B%0A%20%20pen.x%20%3D%20Math.max(0%2C%20Math.min(1%2C%20d.x))%3B%0A%20%20pen.y%20%3D%20Math.max(0%2C%20Math.min(1%2C%20d.y))%3B%0A%20%20pen.p%20%3D%20Math.max(0%2C%20Math.min(1%2C%20d.pressure%20%7C%7C%200))%3B%0A%7D)%3B%0A%0AsetInterval(()%3D%3E%7B%0A%20%20state.x%20%3D%20lerp(state.x%2C%20pen.x%2C%200.18)%3B%0A%20%20state.y%20%3D%20lerp(state.y%2C%20pen.y%2C%200.18)%3B%0A%20%20state.p%20%3D%20lerp(state.p%2C%20pen.p%2C%200.22)%3B%0A%7D%2C%2028)%3B%0A%0A%24%3A%20stack(%0A%20%20s('bd%20~%20sd%20~').gain(()%3D%3E0.45%20%2B%20state.p*0.8).speed(()%3D%3E0.9%20%2B%20state.x*0.4)%2C%0A%20%20note(()%3D%3E%20midi(48%20%2B%20Math.floor((1%20-%20state.y)*18)))%0A%20%20%20%20.sound('gm_strings')%0A%20%20%20%20.gain(()%3D%3E0.32%20%2B%20state.p*0.6)%0A%20%20%20%20.shape(()%3D%3E%20state.x)%0A%20%20%20%20.pan(()%3D%3E%20state.x*2-1)%2C%0A%20%20s('hh*4').gain(()%3D%3E0.2%20%2B%20state.p*0.5).speed(()%3D%3E1%20%2B%20state.x*0.5)%0A)%0A._pianoroll(%7Bcycles%3A4%7D)._spectrum(%7Bspeed%3A0.5%7D).gain(0.9)%0A" allow="autoplay; clipboard-read; clipboard-write" title="Strudel REPL"></iframe>
+    <iframe id="strudel" src="about:blank" allow="autoplay; clipboard-read; clipboard-write" title="Strudel REPL"></iframe>
     <div class="frame-label">Strudel Repl · Default Patch Ready · Press Run</div>
   </section>
 
@@ -435,6 +435,7 @@ const statusCopy = {
 };
 
 const dotPalette = ['#ff004f', '#ff7a00', '#ffd000'];
+const textEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
 const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let fadeHandle = null;
 let colorIndex = 0;
@@ -551,8 +552,24 @@ function setActivePreset(patchId){
   });
 }
 
+function encodeCodeToHash(code){
+  try {
+    if(textEncoder){
+      const bytes = textEncoder.encode(code);
+      let binary = '';
+      bytes.forEach(byte => {
+        binary += String.fromCharCode(byte);
+      });
+      return btoa(binary);
+    }
+  } catch (error) {
+    // fallback below
+  }
+  return btoa(unescape(encodeURIComponent(code)));
+}
+
 function buildStrudelUrl(code){
-  return `https://strudel.cc/?code=${encodeURIComponent(code)}`;
+  return `https://strudel.cc/#${encodeURIComponent(encodeCodeToHash(code))}`;
 }
 
 function loadPatch(patchId, reload = true){
@@ -615,7 +632,7 @@ function drawDot(x, y, pressure){
 function sendPen(x, y, pressure){
   const target = strudelFrame.contentWindow;
   if(!target) return;
-  target.postMessage({ type: 'pen', x, y, pressure, t: performance.now() }, '*');
+  target.postMessage({ type: 'pen', x, y, pressure, t: performance.now() }, 'https://strudel.cc');
 }
 
 function updateInteractionState(){
@@ -640,8 +657,12 @@ function pointerToCanvas(event){
   };
 }
 
+function isSupportedPointer(event){
+  return event.pointerType === 'pen' || event.pointerType === 'touch';
+}
+
 pad.addEventListener('pointerdown', event => {
-  if(event.pointerType !== 'pen') return;
+  if(!isSupportedPointer(event)) return;
   const data = pointerToCanvas(event);
   drawDot(data.x, data.y, data.pressure);
   sendPen(data.x, data.y, data.pressure);
@@ -649,8 +670,8 @@ pad.addEventListener('pointerdown', event => {
 });
 
 pad.addEventListener('pointermove', event => {
-  if(event.pointerType !== 'pen') return;
-  if((event.buttons === 0) && (event.pressure === 0)) return; // hovering
+  if(!isSupportedPointer(event)) return;
+  if((event.buttons === 0) && (!event.pressure || event.pressure === 0)) return;
   const data = pointerToCanvas(event);
   drawDot(data.x, data.y, data.pressure);
   const now = performance.now();
@@ -686,7 +707,7 @@ openButton.addEventListener('click', () => {
   setStatus('ready');
   const target = strudelFrame.contentWindow;
   if(target){
-    target.postMessage({ type: 'hint', action: 'focus' }, '*');
+    target.postMessage({ type: 'hint', action: 'focus' }, 'https://strudel.cc');
   }
 });
 

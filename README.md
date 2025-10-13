@@ -1,6 +1,6 @@
 # TusicPadWeb — Apple Pencil ▶︎ Strudel（外壳 + REPL）
 
-用 **Apple Pencil** 在网页上“画着演奏”，实时驱动官方 **Strudel REPL**（strudel.cc/repl）生成音乐与可视化。
+用 **Apple Pencil** 在网页上“画着演奏”，实时驱动官方 **Strudel REPL**（strudel.cc）生成音乐与可视化。
 
 ## 特性亮点
 - Nothing 风格界面：黑色点阵背景、虚线网格与极简红色强调，贴合 Nothing Phone / CMF 视觉语言。
@@ -8,7 +8,7 @@
 - 上半区画布捕获 Pencil 的 `x / y / pressure` 并节流到约 60fps 发送至 Strudel，视觉尾迹为柔和红光点阵。
 - 下半区嵌入官方 Strudel REPL，真实生成音频与可视化，无需任何自建合成器。
 - Strudel 面板内置预设切换：`Default`（Kick/Strings/Hats）与 `Steel Halo — Kanye × Frank`（工业 909 + 氛围人声），一键加载后可继续编辑。
-- Strudel 官方已将编辑器迁至根路径 `https://strudel.cc/`（详见 [Strudel 官网主页](https://strudel.cc/) 发布说明）；外壳 iframe 直接访问根域并携带 `?code=` 片段可避免旧版 `/repl` 产生的 404。
+- Strudel 官方已将编辑器迁至根路径 `https://strudel.cc/`；外壳采用官方同款 `#<Base64>` 分享链接策略加载预设，避免旧版 `/repl` 404 并确保代码稳定注入。
 - 顶部提供 Nothing 风状态条与 `CLEAR CANVAS` / `Open Strudel` 控件，覆盖式开始面板提醒用户解锁音频。
 
 ---
@@ -146,8 +146,9 @@ $: stack(
 ## 常见问题（Troubleshooting）
 - 没有声音：必须在 REPL 里点一次 **Run**（iOS 音频策略要求用户手势），确认设备未静音并允许声音播放。
 - 进入 REPL 后还是空白：点击地址栏刷新或手动打开 `https://strudel.cc/`。若页面整体 404，请确认已启用 GitHub Pages。
-- iframe 显示 nginx 404：Strudel 已弃用旧路径 `/repl`，请确保外壳加载的是 `https://strudel.cc/`（可携带 `?code=` 查询参数分享片段）。
+- iframe 显示 nginx 404：Strudel 已弃用旧路径 `/repl`，请确保外壳加载的是 `https://strudel.cc/#<Base64>` 分享链接（或直接打开主页再按 Run）。
 - 看不到 “Running” 指示或仍然无声：预设切换后必须手动按 **Run ▶︎**；若仍静音，点右上角 `Open Strudel` 在新标签尝试。
+- Pencil 不响应：Safari 会把 Apple Pencil 报为 `pointerType="touch"` 且 `buttons=0`，请确保使用最新页面（我们已放宽判定）。
 - 压力值恒定：部分第三方触控笔不提供 pressure，系统会回退到 `0.35`，仍可控制横纵向。
 - 状态 Pill 未变绿：确保使用 Apple Pencil 并且在画布区域按压；鼠标不会触发传输。
 - 画面太亮或想重绘：点击顶部「清空画布」即可重置视觉尾迹，音频不会被中断。
