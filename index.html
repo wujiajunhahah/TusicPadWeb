@@ -106,7 +106,7 @@
   .actions{
     display:flex;
     align-items:center;
-    gap:14px;
+    gap:12px;
     flex-wrap:wrap;
     justify-content:flex-end;
   }
@@ -126,6 +126,32 @@
   }
   button:hover{border-color:var(--accent); color:var(--accent);}
   button:focus-visible{outline:2px dashed var(--accent); outline-offset:4px;}
+  .preset-switch{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:6px;
+    border-radius:999px;
+    border:1px dashed var(--border);
+    background:rgba(8,8,10,0.65);
+  }
+  .preset{
+    border:none;
+    padding:8px 16px;
+    background:transparent;
+    color:var(--muted);
+    font-size:11px;
+    letter-spacing:0.2em;
+  }
+  .preset:hover{color:var(--accent);}
+  .preset[aria-pressed="true"]{
+    color:#050505;
+    background:var(--accent);
+    border-radius:999px;
+  }
+  #open-strudel{
+    letter-spacing:0.18em;
+  }
   #status-pill{
     display:flex;
     align-items:center;
@@ -234,6 +260,44 @@
     pointer-events:none;
     font-family:var(--font-display);
   }
+  .preset-info{
+    margin-top:12px;
+    padding:18px 22px;
+    border-radius:18px;
+    border:1px dashed var(--border);
+    background:rgba(8,8,10,0.7);
+    display:flex;
+    flex-direction:row;
+    gap:20px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .preset-meta{
+    min-width:220px;
+  }
+  .preset-title{
+    font-family:var(--font-display);
+    font-size:13px;
+    letter-spacing:0.3em;
+    display:block;
+    margin-bottom:6px;
+    text-transform:uppercase;
+  }
+  .preset-meta p{
+    margin:0;
+    font-size:13px;
+    color:var(--muted);
+    letter-spacing:0.04em;
+  }
+  .preset-steps{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    font-size:12px;
+    color:var(--muted);
+    letter-spacing:0.08em;
+  }
+  .preset-steps strong{color:var(--accent); font-weight:600; letter-spacing:0.04em;}
   #gate{
     position:fixed;
     inset:0;
@@ -268,15 +332,20 @@
   @media (max-width:900px){
     header{flex-direction:column;align-items:flex-start;gap:20px;padding-top:24px;}
     .actions{width:100%;justify-content:flex-start;}
-    main{grid-template-rows:minmax(280px, 48vh) minmax(260px, 1fr);}
+    main{grid-template-rows:minmax(280px, 48vh) minmax(260px, 1fr);} 
     .hud{top:22px;left:22px;padding:18px 20px;letter-spacing:0.22em;}
     .hud strong{letter-spacing:0.32em;}
+    .preset-info{flex-direction:column;align-items:flex-start;}
   }
   @media (max-width:640px){
     button{font-size:10px;letter-spacing:0.18em;padding:9px 18px;}
     #status-pill{font-size:10px;letter-spacing:0.22em;}
     .hud{font-size:10px;}
     .frame-label{letter-spacing:0.24em;font-size:10px;}
+    .preset{padding:8px 12px;font-size:10px;letter-spacing:0.18em;}
+    .preset-info{padding:16px 18px;}
+    .preset-title{font-size:12px;}
+    .preset-steps{font-size:11px;}
   }
   @media (prefers-reduced-motion: reduce){
     *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important;scroll-behavior:auto !important;}
@@ -292,8 +361,13 @@
       <em>Pencil → Strudel Shell</em>
     </div>
   </div>
-  <div class="actions">
+<div class="actions">
     <button id="clear" type="button">Clear Canvas</button>
+    <button id="open-strudel" type="button" aria-label="Open Strudel in new tab">Open Strudel</button>
+    <div class="preset-switch" role="group" aria-label="Strudel patch presets">
+      <button class="preset" data-patch="tusic" aria-pressed="true">Default</button>
+      <button class="preset" data-patch="steel-halo" aria-pressed="false">Steel Halo</button>
+    </div>
     <span id="status-pill" data-state="waiting">
       <span class="dot" aria-hidden="true"></span>
       <span id="status-text">Init</span>
@@ -318,6 +392,17 @@
     <iframe id="strudel" src="https://strudel.cc/?code=%2F%2F%20%3D%3D%3D%20TusicPad%20Receiver%20%3D%3D%3D%0AglobalThis.pen%20%3D%20%7B%20x%3A0.5%2C%20y%3A0.5%2C%20p%3A0.0%20%7D%3B%0Alet%20state%20%3D%20%7B%20x%3A0.5%2C%20y%3A0.5%2C%20p%3A0.0%20%7D%3B%0Aconst%20lerp%20%3D%20(a%2Cb%2Ct)%3D%3Ea%2B(b-a)*t%3B%0A%0Awindow.addEventListener('message'%2C%20(e)%3D%3E%7B%0A%20%20const%20d%20%3D%20e.data%3B%0A%20%20if(!d%20%7C%7C%20d.type!%3D%3D'pen')%20return%3B%0A%20%20pen.x%20%3D%20Math.max(0%2C%20Math.min(1%2C%20d.x))%3B%0A%20%20pen.y%20%3D%20Math.max(0%2C%20Math.min(1%2C%20d.y))%3B%0A%20%20pen.p%20%3D%20Math.max(0%2C%20Math.min(1%2C%20d.pressure%20%7C%7C%200))%3B%0A%7D)%3B%0A%0AsetInterval(()%3D%3E%7B%0A%20%20state.x%20%3D%20lerp(state.x%2C%20pen.x%2C%200.18)%3B%0A%20%20state.y%20%3D%20lerp(state.y%2C%20pen.y%2C%200.18)%3B%0A%20%20state.p%20%3D%20lerp(state.p%2C%20pen.p%2C%200.22)%3B%0A%7D%2C%2028)%3B%0A%0A%24%3A%20stack(%0A%20%20s('bd%20~%20sd%20~').gain(()%3D%3E0.45%20%2B%20state.p*0.8).speed(()%3D%3E0.9%20%2B%20state.x*0.4)%2C%0A%20%20note(()%3D%3E%20midi(48%20%2B%20Math.floor((1%20-%20state.y)*18)))%0A%20%20%20%20.sound('gm_strings')%0A%20%20%20%20.gain(()%3D%3E0.32%20%2B%20state.p*0.6)%0A%20%20%20%20.shape(()%3D%3E%20state.x)%0A%20%20%20%20.pan(()%3D%3E%20state.x*2-1)%2C%0A%20%20s('hh*4').gain(()%3D%3E0.2%20%2B%20state.p*0.5).speed(()%3D%3E1%20%2B%20state.x*0.5)%0A)%0A._pianoroll(%7Bcycles%3A4%7D)._spectrum(%7Bspeed%3A0.5%7D).gain(0.9)%0A" allow="autoplay; clipboard-read; clipboard-write" title="Strudel REPL"></iframe>
     <div class="frame-label">Strudel Repl · Default Patch Ready · Press Run</div>
   </section>
+
+  <section class="preset-info" aria-live="polite">
+    <div class="preset-meta">
+      <span class="preset-title" id="preset-name">Default TusicPad Patch</span>
+      <p id="preset-desc">Kick + strings + hats with Pencil mapped to rhythm / pitch / pressure.</p>
+    </div>
+    <div class="preset-steps" id="preset-steps">
+      <span>① 在下方 Strudel 中按一次 <strong>Run ▶︎</strong> 解锁声音</span>
+      <span>② 返回上方画布，用 Pencil 控制节奏 / 音高 / 质感</span>
+    </div>
+  </section>
 </main>
 
 <div id="gate" role="dialog" aria-modal="true">
@@ -336,8 +421,12 @@ const strudelFrame = document.getElementById('strudel');
 const statusPill = document.getElementById('status-pill');
 const statusText = document.getElementById('status-text');
 const clearButton = document.getElementById('clear');
+const openStrudelButton = document.getElementById('open-strudel');
 const gate = document.getElementById('gate');
 const openButton = document.getElementById('open');
+const presetButtons = Array.from(document.querySelectorAll('.preset[data-patch]'));
+const presetName = document.getElementById('preset-name');
+const presetDesc = document.getElementById('preset-desc');
 
 const statusCopy = {
   waiting: 'Init',
@@ -351,6 +440,137 @@ let fadeHandle = null;
 let colorIndex = 0;
 let lastSent = 0;
 let settleTimer;
+let currentPatch = null;
+
+const patches = {
+  'tusic': {
+    id: 'tusic',
+    name: 'Default TusicPad Patch',
+    description: 'Kick + strings + hats with Pencil mapped to rhythm / pitch / pressure.',
+    code: `// === TusicPad Receiver ===
+globalThis.pen = { x:0.5, y:0.5, p:0.0 };
+let state = { x:0.5, y:0.5, p:0.0 };
+const lerp = (a,b,t)=>a+(b-a)*t;
+
+window.addEventListener('message', (e)=>{
+  const d = e.data;
+  if(!d || d.type!=='pen') return;
+  pen.x = Math.max(0, Math.min(1, d.x));
+  pen.y = Math.max(0, Math.min(1, d.y));
+  pen.p = Math.max(0, Math.min(1, d.pressure || 0));
+});
+
+setInterval(()=>{
+  state.x = lerp(state.x, pen.x, 0.18);
+  state.y = lerp(state.y, pen.y, 0.18);
+  state.p = lerp(state.p, pen.p, 0.22);
+}, 28);
+
+$: stack(
+  // Kick layer
+  s('bd ~ sd ~').gain(()=>0.45 + state.p*0.8).speed(()=>0.9 + state.x*0.4),
+
+  // String melody
+  note(()=> midi(48 + Math.floor((1 - state.y)*18)))
+    .sound('gm_strings')
+    .gain(()=> 0.32 + state.p*0.6)
+    .shape(()=> state.x)
+    .pan(()=> state.x*2-1),
+
+  // Hi-hats
+  s('hh*4').gain(()=> state.p*0.5).hp(5000).speed(()=> 1 + state.x*0.5)
+)
+._pianoroll({cycles:4})._spectrum({speed:0.5}).gain(0.9)`
+  },
+  'steel-halo': {
+    id: 'steel-halo',
+    name: 'Steel Halo — Kanye × Frank',
+    description: 'Industrial 909 groove, fretless bass, airy choir pad, and sparkling hats.',
+    code: `// === Steel Halo: Kanye × Frank ===
+// 接收 Apple Pencil 数据
+globalThis.pen = {x:0.5, y:0.5, p:0.0};
+let state = {x:0.5, y:0.5, p:0.0};
+function lerp(a,b,t){return a+(b-a)*t;}
+
+window.addEventListener('message', (e)=>{
+  const d=e.data;
+  if(!d || d.type!=='pen')return;
+  pen.x=Math.max(0,Math.min(1,d.x));
+  pen.y=Math.max(0,Math.min(1,d.y));
+  pen.p=Math.max(0,Math.min(1,d.pressure||0));
+});
+
+setInterval(()=>{
+  state.x=lerp(state.x,pen.x,0.2);
+  state.y=lerp(state.y,pen.y,0.2);
+  state.p=lerp(state.p,pen.p,0.2);
+},30);
+
+// === 乐曲结构 ===
+$: stack(
+  // 工业节奏：金属底鼓 + 断续呼吸
+  s("bd*2 [~ sd] bd [~ hh] bd sd")
+    .bank("RolandTR909")
+    .gain(()=>0.6 + state.p*0.4)
+    .speed(()=>0.8 + state.x*0.4)
+    .distort(()=>state.p*0.2)
+    .crush(()=>2 + state.x*5),
+
+  // 深沉贝斯：跟随笔的纵向移动
+  note(()=> midi(36 + Math.floor((1-state.y)*12)))
+    .sound("gm_fretless_bass")
+    .gain(()=>0.4 + state.p*0.5)
+    .room(0.4)
+    .pan(()=>state.x*2-1),
+
+  // Frank 风格人声垫：漂浮氛围
+  note(()=> choose(["c5","d#5","g5","a#4"]))
+    .sound("gm_choir_aahs")
+    .gain(()=>0.3 + state.p*0.4)
+    .room(0.7)
+    .shape(()=>state.x)
+    .slow(2)
+    .cut(2),
+
+  // 高频碎片：空气感的闪光
+  s("~ hh*4 [cp*2 ~]")
+    .gain(()=>0.2 + state.p*0.3)
+    .hp(()=>4000 + state.x*4000)
+    .speed(()=>1 + state.x*0.5)
+    .pan(()=>Math.sin(performance.now()/500))
+)
+._pianoroll({cycles:8,playhead:0.4})
+._spectrum({thickness:3,speed:0.5})
+.gain(0.9)`
+  }
+};
+
+function setActivePreset(patchId){
+  presetButtons.forEach(btn => {
+    const active = btn.dataset.patch === patchId;
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+function buildStrudelUrl(code){
+  return `https://strudel.cc/?code=${encodeURIComponent(code)}`;
+}
+
+function loadPatch(patchId, reload = true){
+  const patch = patches[patchId];
+  if(!patch) return;
+  const wasSame = currentPatch && currentPatch.id === patch.id;
+  currentPatch = patch;
+  setActivePreset(patch.id);
+  presetName.textContent = patch.name;
+  presetDesc.textContent = patch.description;
+  const targetUrl = buildStrudelUrl(patch.code);
+  if(!wasSame || reload || !strudelFrame.src.includes('strudel.cc')){
+    strudelFrame.src = targetUrl;
+  }
+  pad.classList.remove('is-active');
+  setStatus('ready');
+}
 
 function setStatus(state){
   statusPill.dataset.state = state;
@@ -470,9 +690,22 @@ openButton.addEventListener('click', () => {
   }
 });
 
+if(openStrudelButton){
+  openStrudelButton.addEventListener('click', () => {
+    window.open(strudelFrame.src, '_blank', 'noopener,noreferrer');
+  });
+}
+
+presetButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    loadPatch(btn.dataset.patch, true);
+  });
+});
+
 window.addEventListener('resize', resizeCanvas, { passive: true });
 window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 280));
 
+loadPatch('tusic', false);
 resizeCanvas();
 clearCanvas();
 if(!reduceMotion){
