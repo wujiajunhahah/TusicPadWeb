@@ -816,10 +816,6 @@ openButton.addEventListener('click', () => {
   if(target){
     target.postMessage({ type: 'hint', action: 'focus' }, 'https://strudel.cc');
   }
-  // 自动在新标签打开 Strudel，便于用户按 Run 解锁音频
-  if(strudelFrame && strudelFrame.src){
-    window.open(strudelFrame.src, '_blank', 'noopener,noreferrer');
-  }
 });
 
 if(openStrudelButton){
