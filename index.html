@@ -363,6 +363,7 @@
   </div>
 <div class="actions">
     <button id="clear" type="button">Clear Canvas</button>
+    <button id="test-sound" type="button" aria-label="Play a short test beep">Test Sound</button>
     <button id="open-strudel" type="button" aria-label="Open Strudel in new tab">Open Strudel</button>
     <div class="preset-switch" role="group" aria-label="Strudel patch presets">
       <button class="preset" data-patch="tusic" aria-pressed="true">Default</button>
@@ -422,6 +423,7 @@ const statusPill = document.getElementById('status-pill');
 const statusText = document.getElementById('status-text');
 const clearButton = document.getElementById('clear');
 const openStrudelButton = document.getElementById('open-strudel');
+const testSoundButton = document.getElementById('test-sound');
 const gate = document.getElementById('gate');
 const openButton = document.getElementById('open');
 const presetButtons = Array.from(document.querySelectorAll('.preset[data-patch]'));
@@ -442,6 +444,38 @@ let colorIndex = 0;
 let lastSent = 0;
 let settleTimer;
 let currentPatch = null;
+let audioCtx = null;
+
+function ensureAudioContext(){
+  try{
+    if(!audioCtx){
+      const Ctor = window.AudioContext || window.webkitAudioContext;
+      if(!Ctor) return null;
+      audioCtx = new Ctor();
+    }
+    if(audioCtx.state === 'suspended'){
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }catch(_){
+    return null;
+  }
+}
+
+function playTestBeep(){
+  const ctx = ensureAudioContext();
+  if(!ctx) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = 880;
+  gain.gain.setValueAtTime(0.001, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.1, ctx.currentTime + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.2);
+}
 
 const patches = {
   'tusic': {
@@ -709,11 +743,21 @@ openButton.addEventListener('click', () => {
   if(target){
     target.postMessage({ type: 'hint', action: 'focus' }, 'https://strudel.cc');
   }
+  // 自动在新标签打开 Strudel，便于用户按 Run 解锁音频
+  if(strudelFrame && strudelFrame.src){
+    window.open(strudelFrame.src, '_blank', 'noopener,noreferrer');
+  }
 });
 
 if(openStrudelButton){
   openStrudelButton.addEventListener('click', () => {
     window.open(strudelFrame.src, '_blank', 'noopener,noreferrer');
+  });
+}
+
+if(testSoundButton){
+  testSoundButton.addEventListener('click', () => {
+    playTestBeep();
   });
 }
 
