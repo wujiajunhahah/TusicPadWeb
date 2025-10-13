@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Apple Pencil × p5.js × Tone.js — 画着出声</title>
+  <!-- p5.js -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.3/lib/p5.min.js"></script>
+  <!-- Tone.js -->
+  <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
+  <style>
+    :root { color-scheme: dark; }
+    html, body { margin:0; height:100%; overflow:hidden; background:#000; }
+    #startBtn {
+      position: fixed; inset: 0; margin: auto; width: min(80vw, 320px);
+      height: 56px; font-size: 18px; font-family: system-ui, -apple-system, "SF Pro", "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background:#1f6feb; color:#fff; border:none; border-radius:14px; box-shadow: 0 8px 24px rgba(31,111,235,0.35);
+    }
+    #hint { position: fixed; top: 10px; left: 12px; color:#bbb; font:14px/1.3 system-ui; }
+  </style>
+</head>
+<body>
+  <button id="startBtn">点我启动音频（iPad 需要先点一下）</button>
+  <div id="hint">横向 = 节奏密度 | 纵向 = 音高 | 压力 = 音量。用 Apple Pencil 在画布上移动。</div>
+
+  <script>
+  /* global Tone */
+
+  // —— 音频引擎 ——
+  let started = false;
+  let synth, hat;
+
+  // —— 笔迹状态（目标 & 平滑后） ——
+  const target = { x: 0.5, y: 0.5, p: 0.2 };
+  const state  = { x: 0.5, y: 0.5, p: 0.2 };
+  let lastTS   = 0;
+
+  // —— 启动按钮 ——
+  const startBtn = document.getElementById('startBtn');
+  startBtn.addEventListener('click', async () => {
+    try {
+      await Tone.start();
+      synth = new Tone.Synth({
+        oscillator: { type: "triangle" },
+        envelope: { attack: 0.01, decay: 0.05, sustain: 0.25, release: 0.45 }
+      }).toDestination();
+
+      hat = new Tone.NoiseSynth({
+        noise: { type: "white" },
+        envelope: { attack: 0.001, decay: 0.05, sustain: 0 }
+      }).toDestination();
+
+      // 节奏：每 1/2 拍触发，横向控制密度
+      Tone.Transport.scheduleRepeat(() => {
+        const dens = 2 + Math.floor(state.x * 6); // 2~8
+        const now = Tone.now();
+        for (let i = 0; i < dens; i++) {
+          hat.triggerAttackRelease("16n", now + (i * 0.5) / dens);
+        }
+      }, "0.5");
+
+      Tone.Transport.start();
+      started = true;
+      startBtn.remove();
+    } catch (e) {
+      alert("启动失败：请再次点击，或检查是否开启了低电量/静音模式。");
+      console.error(e);
+    }
+  });
+
+  // —— p5.js 画布 ——
+  let W = 0, H = 0;
+  function setup() {
+    createCanvas(windowWidth, windowHeight);
+    colorMode(HSB, 360, 100, 100, 1);
+    noStroke();
+    background(0);
+  }
+
+  function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+  }
+
+  // 用 Pointer Events 获取 Apple Pencil 的 pressure/x/y
+  window.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'pen') return;
+    const rect = document.body.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    target.x = Math.max(0, Math.min(1, x));
+    target.y = Math.max(0, Math.min(1, y));
+    target.p = (typeof e.pressure === 'number') ? e.pressure : 0.3;
+  }, { passive: true });
+
+  function draw() {
+    // 平滑插值（让停笔也有尾音/连贯）
+    state.x = state.x + (target.x - state.x) * 0.2;
+    state.y = state.y + (target.y - state.y) * 0.2;
+    state.p = state.p + (target.p - state.p) * 0.2;
+
+    // 可视化：颜色=横向，亮度=压力
+    const hue = 360 * state.x;
+    const bri = 20 + state.p * 70;
+    fill(hue, 90, bri, 0.3);
+    circle(state.x * width, state.y * height, 18 + state.p * 48);
+
+    // 演奏（每隔几帧触发一次，降低开销）
+    if (started && frameCount % 3 === 0) {
+      const freq = 180 + (1 - state.y) * 720; // 180~900Hz
+      const volDb = -28 + state.p * 24;       // -28 ~ -4 dB
+      synth.volume.value = volDb;
+      synth.triggerAttackRelease(freq, "16n");
+    }
+
+    // 留下拖影
+    fill(0, 0, 0, 0.08);
+    rect(0, 0, width, height);
+  }
+  </script>
+</body>
+</html>
