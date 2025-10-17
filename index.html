@@ -385,8 +385,8 @@
     <button id="btn-visual" type="button" aria-label="Toggle Visual Full overlay">Visual Full</button>
     <button id="open-strudel" type="button" aria-label="Open Strudel in new tab">Open Strudel</button>
     <div class="preset-switch" role="group" aria-label="Strudel patch presets">
-      <button class="preset" data-patch="kanye-v4" aria-pressed="true">Kanye v4</button>
-      <button class="preset" data-patch="synth" aria-pressed="false">Synth</button>
+      <button class="preset" data-patch="kanye-v4" aria-pressed="false">Kanye v4</button>
+      <button class="preset" data-patch="synth" aria-pressed="true">Synth</button>
     </div>
     <span id="status-pill" data-state="waiting">
       <span class="dot" aria-hidden="true"></span>
@@ -1086,7 +1086,7 @@ presetButtons.forEach(btn => {
 window.addEventListener('resize', resizeCanvas, { passive: true });
 window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 280));
 
-loadPatch('kanye-v4', false);
+loadPatch('synth', false);
 resizeCanvas();
 clearCanvas();
 if(!reduceMotion){
