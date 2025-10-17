@@ -188,6 +188,12 @@
   #status-pill[data-state="ready"] .dot{background:var(--accent); box-shadow:0 0 8px rgba(255,0,79,0.65);}
   #status-pill[data-state="live"]{border-color:var(--accent); background:var(--accent-faint); color:var(--accent);}
   #status-pill[data-state="live"] .dot{background:var(--accent); box-shadow:0 0 14px rgba(255,0,79,0.8); transform:scale(1.1);}
+  #status-pill[data-state="loading"]{border-color:var(--accent-alt); color:var(--accent-alt);}
+  #status-pill[data-state="loading"] .dot{background:var(--accent-alt); animation:pulse 1.5s ease-in-out infinite;}
+  #status-pill[data-state="error"]{border-color:#ff4444; color:#ff4444;}
+  #status-pill[data-state="error"] .dot{background:#ff4444; animation:blink 1s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:0.6; transform:scale(0.95);} 50%{opacity:1; transform:scale(1.05);}}
+  @keyframes blink{0%,50%{opacity:1;} 25%,75%{opacity:0.3;}}
   main{
     flex:1;
     display:grid;
@@ -446,8 +452,10 @@ const presetDesc = document.getElementById('preset-desc');
 
 const statusCopy = {
   waiting: 'Init',
+  loading: 'Loading',
   ready: 'Ready',
-  live: 'Live'
+  live: 'Live',
+  error: 'Error'
 };
 
 const dotPalette = ['#ff004f', '#ff7a00', '#ffd000'];
@@ -774,9 +782,15 @@ function encodeCodeToHash(code){
 }
 
 function buildStrudelUrl(code){
+  // 使用缓存破坏的URL格式，同时保持兼容性
   const hash = encodeURIComponent(encodeCodeToHash(code));
   const bust = Date.now().toString(36);
   return `https://strudel.cc/#${hash}&v=${bust}`;
+}
+
+// 备用URL构建方法，直接使用Strudel主页
+function buildStrudelBaseUrl(){
+  return 'https://strudel.cc/';
 }
 
 function loadPatch(patchId, reload = true){
@@ -787,18 +801,101 @@ function loadPatch(patchId, reload = true){
   setActivePreset(patch.id);
   presetName.textContent = patch.name;
   presetDesc.textContent = patch.description;
-  const targetUrl = buildStrudelUrl(patch.code);
+
   if(!wasSame || reload || !strudelFrame.src.includes('strudel.cc')){
-    strudelFrame.src = targetUrl;
+    // 添加加载状态
+    setStatus('loading');
+
+    // 首先尝试加载预设代码URL
+    const targetUrl = buildStrudelUrl(patch.code);
+    loadWithFallback(targetUrl, patch);
   }
   pad.classList.remove('is-active');
-  setStatus('ready');
+
   // 选择 Kanye v4 时自动进入可视化铺满模式，其它预设关闭
   if(patchId === 'kanye-v4'){
     attachStrudelToPad();
   }else{
     restoreStrudelToEmbed();
   }
+}
+
+function loadWithFallback(primaryUrl, patch) {
+  let attemptCount = 0;
+  const maxAttempts = 2;
+
+  const tryLoad = (url) => {
+    attemptCount++;
+    console.log(`Loading Strudel (attempt ${attemptCount}):`, url);
+
+    strudelFrame.onload = () => {
+      console.log('Strudel iframe loaded successfully');
+      setStatus('ready');
+
+      // 发送初始化消息确保连接建立
+      setTimeout(() => {
+        try {
+          const target = strudelFrame.contentWindow;
+          if(target) {
+            target.postMessage({ type: 'init', source: 'tusicpad', patch: patch.id }, 'https://strudel.cc');
+          }
+        } catch (error) {
+          console.warn('Failed to send init message:', error);
+        }
+      }, 500);
+    };
+
+    strudelFrame.onerror = () => {
+      console.error(`Failed to load Strudel iframe (attempt ${attemptCount}):`, url);
+
+      if(attemptCount < maxAttempts) {
+        // 如果第一次尝试失败，尝试基础URL
+        if(attemptCount === 1) {
+          console.log('Retrying with base URL...');
+          tryLoad(buildStrudelBaseUrl());
+        } else {
+          setStatus('error');
+        }
+      } else {
+        setStatus('error');
+        // 显示手动复制代码的选项
+        showManualCodeOption(patch);
+      }
+    };
+
+    strudelFrame.src = url;
+  };
+
+  tryLoad(primaryUrl);
+}
+
+function showManualCodeOption(patch) {
+  const steps = document.getElementById('preset-steps');
+  steps.innerHTML = `
+    <span style="color: #ff4444;">⚠️ 自动加载失败，请手动操作：</span>
+    <span>① 在下方打开 <a href="https://strudel.cc/" target="_blank" style="color: var(--accent);">strudel.cc</a></span>
+    <span>② 复制下方代码并粘贴到 Strudel 编辑器中</span>
+    <span>③ 按 <strong>Run ▶︎</strong> 开始演奏</span>
+  `;
+
+  // 创建代码显示区域
+  const codeDisplay = document.createElement('div');
+  codeDisplay.style.cssText = `
+    margin-top: 16px;
+    padding: 16px;
+    background: rgba(8,8,10,0.9);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow-y: auto;
+  `;
+  codeDisplay.textContent = patch.code;
+
+  steps.parentNode.appendChild(codeDisplay);
 }
 
 function setStatus(state){
@@ -844,8 +941,19 @@ function drawDot(x, y, pressure){
 
 function sendPen(x, y, pressure){
   const target = strudelFrame.contentWindow;
-  if(!target) return;
-  target.postMessage({ type: 'pen', x, y, pressure, t: performance.now() }, 'https://strudel.cc');
+  if(!target) {
+    console.warn('Strudel iframe contentWindow not available');
+    setStatus('error');
+    return;
+  }
+
+  try {
+    target.postMessage({ type: 'pen', x, y, pressure, t: performance.now() }, 'https://strudel.cc');
+    console.log('Pen data sent:', { x, y, pressure });
+  } catch (error) {
+    console.error('Failed to send pen data:', error);
+    setStatus('error');
+  }
 }
 
 function updateInteractionState(){
@@ -917,11 +1025,34 @@ clearButton.addEventListener('click', () => {
 
 openButton.addEventListener('click', () => {
   gate.setAttribute('hidden', 'true');
-  setStatus('ready');
-  const target = strudelFrame.contentWindow;
-  if(target){
-    target.postMessage({ type: 'hint', action: 'focus' }, 'https://strudel.cc');
-  }
+  setStatus('loading');
+
+  // 确保Strudel已正确加载
+  const checkStrudelReady = () => {
+    try {
+      const target = strudelFrame.contentWindow;
+      if(target && target.location && target.location.href.includes('strudel.cc')) {
+        console.log('Strudel is ready, sending focus hint');
+        target.postMessage({ type: 'hint', action: 'focus' }, 'https://strudel.cc');
+        setStatus('ready');
+
+        // 添加调试信息
+        setTimeout(() => {
+          console.log('Current patch loaded:', currentPatch?.name);
+          console.log('Strudel URL:', strudelFrame.src);
+        }, 1000);
+      } else {
+        console.log('Strudel not ready yet, retrying...');
+        setTimeout(checkStrudelReady, 1000);
+      }
+    } catch (error) {
+      console.warn('Cannot access Strudel iframe yet:', error);
+      setTimeout(checkStrudelReady, 1000);
+    }
+  };
+
+  // 延迟检查确保iframe有足够时间加载
+  setTimeout(checkStrudelReady, 500);
 });
 
 if(openStrudelButton){
