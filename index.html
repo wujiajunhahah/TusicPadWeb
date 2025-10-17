@@ -55,6 +55,36 @@
     pointer-events:none;
     z-index:-1;
   }
+
+  /* 音乐可视化背景 */
+  .viz-container {
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    z-index:-1;
+    opacity:0.6;
+  }
+
+  .viz-circle {
+    position:absolute;
+    border-radius:50%;
+    border:1px solid;
+    animation:expand 4s ease-out infinite;
+  }
+
+  @keyframes expand {
+    0% { transform:scale(0); opacity:0.8; }
+    100% { transform:scale(3); opacity:0; }
+  }
+
+  .viz-bar {
+    position:absolute;
+    bottom:0;
+    width:2px;
+    background:linear-gradient(to top, var(--accent), transparent);
+    transform-origin:bottom;
+    transition:height 0.1s ease;
+  }
     header{
     display:flex;
     align-items:center;
@@ -359,6 +389,9 @@
 </style>
 </head>
 <body>
+<!-- 音乐可视化背景容器 -->
+<div class="viz-container" id="viz-container"></div>
+
 <header>
   <div class="brand">
     <div class="glyph" aria-hidden="true">TP</div>
@@ -372,6 +405,8 @@
     <div class="preset-switch" role="group" aria-label="Strudel patch presets">
       <button class="preset" data-patch="tusic" aria-pressed="true">TusicPad</button>
       <button class="preset" data-patch="synth" aria-pressed="false">Synth</button>
+      <button class="preset" data-patch="ambient" aria-pressed="false">Ambient</button>
+      <button class="preset" data-patch="techno" aria-pressed="false">Techno</button>
     </div>
     <span id="status-pill" data-state="waiting">
       <span class="dot" aria-hidden="true"></span>
@@ -440,7 +475,7 @@ const statusCopy = {
   error: 'Error'
 };
 
-const dotPalette = ['#ff004f', '#ff7a00', '#ffd000'];
+const dotPalette = ['#ff004f', '#ff7a00', '#ffd000', '#00ffcc', '#ff00ff'];
 const textEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
 const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let fadeHandle = null;
@@ -448,6 +483,12 @@ let colorIndex = 0;
 let lastSent = 0;
 let settleTimer;
 let currentPatch = null;
+
+// 可视化相关变量
+let vizContainer = null;
+let bars = [];
+let circles = [];
+let animationFrame = null;
 
 const patches = {
   'synth': {
@@ -563,6 +604,104 @@ $: stack(
   s('hh*4').gain(()=> state.p*0.5).hp(5000).speed(()=> 1 + state.x*0.5)
 )
 ._pianoroll({cycles:4})._spectrum({speed:0.5}).gain(0.9)`
+  },
+  'ambient': {
+    id: 'ambient',
+    name: 'Ambient Dreams',
+    description: 'Atmospheric pads and melodic textures with Pencil control.',
+    code: `// === Ambient Dreams ===
+globalThis.pen = { x:0.5, y:0.5, p:0.0 };
+let state = { x:0.5, y:0.5, p:0.0 };
+const lerp = (a,b,t)=>a+(b-a)*t;
+
+window.addEventListener('message', (e)=>{
+  const d = e.data;
+  if(!d || d.type!=='pen') return;
+  pen.x = Math.max(0, Math.min(1, d.x));
+  pen.y = Math.max(0, Math.min(1, d.y));
+  pen.p = Math.max(0, Math.min(1, d.pressure || 0));
+});
+
+setInterval(()=>{
+  state.x = lerp(state.x, pen.x, 0.12);
+  state.y = lerp(state.y, pen.y, 0.12);
+  state.p = lerp(state.p, pen.p, 0.15);
+}, 32);
+
+$: stack(
+  // 氛围和声
+  note("<c3 eb3 g3 bb3>*2").sound('padscape')
+    .gain(0.3 + state.p*0.4)
+    .lp(800 + state.y*2000)
+    .pan(state.x*2-1)
+    .shape(0.8),
+
+  // 钟琴旋律
+  note(scale('c4 minor', "[0 2 4 7]")).sound('gam')
+    .gain(0.2 + state.p*0.3)
+    .speed(0.5 + state.x*0.5)
+    .decay(2),
+
+  // 环境纹理
+  s('crayon*8').gain(state.p*0.15).lp(3000).pan(state.x*2-1),
+
+  // 低音铺垫
+  note("<c2 g2>*4").sound('bass').gain(0.15 + state.p*0.2).lp(200)
+)
+._pianoroll({cycles:8})._spectrum({speed:0.3}).gain(1.2)`
+  },
+  'techno': {
+    id: 'techno',
+    name: 'Techno Groove',
+    description: 'Driving techno beats with synth leads controlled by Pencil.',
+    code: `// === Techno Groove ===
+globalThis.pen = { x:0.5, y:0.5, p:0.0 };
+let state = { x:0.5, y:0.5, p:0.0 };
+const lerp = (a,b,t)=>a+(b-a)*t;
+
+window.addEventListener('message', (e)=>{
+  const d = e.data;
+  if(!d || d.type!=='pen') return;
+  pen.x = Math.max(0, Math.min(1, d.x));
+  pen.y = Math.max(0, Math.min(1, d.y));
+  pen.p = Math.max(0, Math.min(1, d.pressure || 0));
+});
+
+setInterval(()=>{
+  state.x = lerp(state.x, pen.x, 0.25);
+  state.y = lerp(state.y, pen.y, 0.25);
+  state.p = lerp(state.p, pen.p, 0.3);
+}, 25);
+
+$: stack(
+  // 主鼓组
+  s("bd*4, sd*4").gain(0.6 + state.p*0.4)
+    .speed(()=>0.8 + state.x*0.4)
+    .sometimes(by(0.1), s('cp')),
+
+  // 踩镲模式
+  s("hh*8").gain(0.2 + state.p*0.3)
+    .speed(()=>1 + state.x*0.5)
+    .sometimes(by(0.15), s('oh')),
+
+  // 合成器贝斯
+  note("[c1 c2 g1]*2").sound('sawtooth')
+    .gain(0.4 + state.p*0.4)
+    .lp(100 + state.y*400)
+    .pan(state.x*2-1)
+    .shape(0.9),
+
+  // 主旋律
+  note(scale('c3 minor', "[0 3 5 7 10]")).sound('superpiano')
+    .gain(0.25 + state.p*0.35)
+    .speed(()=>0.5 + state.x*0.8)
+    .pan(state.x*2-1)
+    .decay(0.8),
+
+  // 效果声
+  s("glitch*4").gain(state.p*0.2).hp(5000).speed(2)
+)
+._pianoroll({cycles:4})._spectrum({speed:1}).gain(1.1)`
   }
 };
 
@@ -751,9 +890,100 @@ function sendPen(x, y, pressure){
   try {
     target.postMessage({ type: 'pen', x, y, pressure, t: performance.now() }, 'https://strudel.cc');
     console.log('Pen data sent:', { x, y, pressure });
+
+    // 触发可视化效果
+    if(vizContainer) {
+      updateVisualization(x, y, pressure);
+    }
   } catch (error) {
     console.error('Failed to send pen data:', error);
     setStatus('error');
+  }
+}
+
+// 可视化初始化函数
+function initVisualization() {
+  vizContainer = document.getElementById('viz-container');
+  if(!vizContainer) return;
+
+  // 创建频谱条
+  const barCount = 32;
+  for(let i = 0; i < barCount; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'viz-bar';
+    bar.style.left = `${(i / barCount) * 100}%`;
+    bar.style.height = '0%';
+    bar.style.background = `linear-gradient(to top, ${dotPalette[i % dotPalette.length]}, transparent)`;
+    vizContainer.appendChild(bar);
+    bars.push(bar);
+  }
+}
+
+// 更新可视化效果
+function updateVisualization(x, y, pressure) {
+  if(!vizContainer || bars.length === 0) return;
+
+  // 更新频谱条
+  bars.forEach((bar, i) => {
+    const targetX = i / bars.length;
+    const distance = Math.abs(targetX - x);
+    const influence = Math.max(0, 1 - distance * 3);
+    const height = pressure * influence * 80 + Math.random() * pressure * 20;
+
+    bar.style.height = `${Math.min(100, height)}%`;
+    bar.style.opacity = 0.3 + influence * 0.7;
+  });
+
+  // 创建扩散圆圈效果
+  if(pressure > 0.3 && Math.random() < pressure * 0.5) {
+    createCircle(x, y, pressure);
+  }
+}
+
+// 创建扩散圆圈
+function createCircle(x, y, pressure) {
+  const circle = document.createElement('div');
+  circle.className = 'viz-circle';
+  const size = 50 + pressure * 150;
+  const color = dotPalette[Math.floor(Math.random() * dotPalette.length)];
+
+  circle.style.width = `${size}px`;
+  circle.style.height = `${size}px`;
+  circle.style.left = `${x * window.innerWidth - size/2}px`;
+  circle.style.top = `${y * window.innerHeight - size/2}px`;
+  circle.style.borderColor = color;
+  circle.style.opacity = 0.3 + pressure * 0.4;
+
+  vizContainer.appendChild(circle);
+  circles.push(circle);
+
+  // 自动清理
+  setTimeout(() => {
+    if(circle.parentNode) {
+      circle.parentNode.removeChild(circle);
+    }
+    const index = circles.indexOf(circle);
+    if(index > -1) circles.splice(index, 1);
+  }, 4000);
+}
+
+// 动画循环
+function animateVisualization() {
+  if(!vizContainer) return;
+
+  // 自然衰减频谱条
+  bars.forEach(bar => {
+    const currentHeight = parseFloat(bar.style.height) || 0;
+    const newHeight = currentHeight * 0.92;
+    bar.style.height = `${newHeight}%`;
+
+    const currentOpacity = parseFloat(bar.style.opacity) || 0;
+    const newOpacity = currentOpacity * 0.95;
+    bar.style.opacity = `${Math.max(0.1, newOpacity)}`;
+  });
+
+  if(!reduceMotion) {
+    animationFrame = requestAnimationFrame(animateVisualization);
   }
 }
 
@@ -935,13 +1165,21 @@ window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 280)
 loadPatch('tusic', false);
 resizeCanvas();
 clearCanvas();
+
+// 初始化可视化系统
+initVisualization();
+
 if(!reduceMotion){
   fadeHandle = requestAnimationFrame(fadeFrame);
+  animationFrame = requestAnimationFrame(animateVisualization);
 }
 
 window.addEventListener('beforeunload', () => {
   if(fadeHandle){
     cancelAnimationFrame(fadeHandle);
+  }
+  if(animationFrame){
+    cancelAnimationFrame(animationFrame);
   }
 });
 
