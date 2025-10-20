@@ -403,7 +403,8 @@
 <div class="actions">
     <button id="open-strudel" type="button" aria-label="Open Strudel in new tab">Open Strudel</button>
     <div class="preset-switch" role="group" aria-label="Strudel patch presets">
-      <button class="preset" data-patch="tusic" aria-pressed="true">TusicPad</button>
+      <button class="preset" data-patch="kanye-v4" aria-pressed="true">Kanye v4</button>
+      <button class="preset" data-patch="tusic" aria-pressed="false">TusicPad</button>
       <button class="preset" data-patch="synth" aria-pressed="false">Synth</button>
       <button class="preset" data-patch="ambient" aria-pressed="false">Ambient</button>
       <button class="preset" data-patch="techno" aria-pressed="false">Techno</button>
@@ -428,6 +429,11 @@
       </div>
     </div>
   </section>
+
+  <!-- 诊断面板 -->
+  <div id="diag" style="position:fixed;right:14px;bottom:14px;padding:10px 12px;border:1px dashed var(--border);border-radius:12px;background:rgba(8,8,10,0.72);font-family:var(--font-mono);font-size:11px;color:var(--muted);z-index:99;pointer-events:none">
+    pen: <span id="d-pen">0</span> · audio: <span id="d-audio">0</span> · run? <span id="d-run">?</span>
+  </div>
   <section class="surface embed" aria-label="Strudel REPL">
     <iframe id="strudel" src="about:blank" allow="autoplay; clipboard-read; clipboard-write" title="Strudel REPL"></iframe>
     <div class="frame-label">Strudel Repl · Press Run ▶︎ · Then Draw Above</div>
@@ -435,8 +441,8 @@
 
   <section class="preset-info" aria-live="polite">
     <div class="preset-meta">
-      <span class="preset-title" id="preset-name">TusicPad Default</span>
-      <p id="preset-desc">Kick + strings + hats with Pencil mapped to rhythm / pitch / pressure.</p>
+      <span class="preset-title" id="preset-name">Kanye Industrial v4</span>
+      <p id="preset-desc">安全版 Kanye 工业感节拍，使用 samples only，Pencil 控制所有参数。</p>
     </div>
     <div class="preset-steps" id="preset-steps">
       <span>① 在下方 Strudel 中按一次 <strong>Run ▶︎</strong> 解锁声音</span>
@@ -490,7 +496,78 @@ let bars = [];
 let circles = [];
 let animationFrame = null;
 
+// 诊断面板变量
+let diagPen = 0, diagAudio = 0, diagRun = '?';
+let meterCtx, meterTimer;
+const dPen = ()=> {
+  const el = document.getElementById('d-pen');
+  if(el) el.innerText = String(diagPen);
+};
+const dAud = ()=> {
+  const el = document.getElementById('d-audio');
+  if(el) el.innerText = String(diagAudio);
+};
+const dRun = ()=> {
+  const el = document.getElementById('d-run');
+  if(el) el.innerText = String(diagRun);
+};
+
 const patches = {
+  'kanye-v4': {
+    id: 'kanye-v4',
+    name: 'Kanye Industrial v4',
+    description: '安全版 Kanye 工业感节拍，使用 samples only，Pencil 控制所有参数。',
+    code: `// === KANYE INDUSTRIAL — Pencil Safe Patch (samples only) ===
+// 外壳 postMessage({type:'pen', x, y, pressure})
+globalThis.pen = globalThis.pen ?? { x:0.5, y:0.5, p:0.25 }
+let state = { x: pen.x, y: pen.y, p: pen.p }
+const clamp01 = v => Math.max(0, Math.min(1, v))
+const safe = (v, d=0)=>{ const n=Number(v); return Number.isFinite(n)?n:d }
+
+// 接收 Pencil & 平滑
+window.addEventListener('message', e=>{
+  const d = e.data; if(!d || d.type!=='pen') return
+  pen.x = clamp01(d.x); pen.y = clamp01(d.y); pen.p = clamp01(d.pressure ?? 0.25)
+})
+setInterval(()=>{
+  state.x = safe(state.x + (pen.x - state.x)*0.2, 0.5)
+  state.y = safe(state.y + (pen.y - state.y)*0.2, 0.5)
+  state.p = safe(state.p + (pen.p - state.p)*0.2, 0.25)
+}, 30)
+
+// —— 冰冷底鼓（主角）——
+const kick = s("bd ~ [~ sd] ~ bd [~ sd] ~ [hh ~]")
+  .speed(()=> safe(0.88 + state.x*0.32, 1.0))                // X → 速度
+  .gain(()=>  safe(0.40 + state.p*0.40, 0.5))                // P → 能量
+  .distort(()=>safe(0.05 + state.p*0.20, 0.08))              // P → 轻失真
+  .lp(()=>    safe(800 + (1-state.y)*2800, 1600))            // Y → 闷亮
+  .crush(()=> safe(2 + Math.floor(state.x*4), 2))
+  .cut(1)
+
+// —— 反拍军鼓（干）——
+const snare = s("~ sd ~ ~ ~ sd ~ ~")
+  .gain(()=> safe(0.18 + state.p*0.18, 0.22))
+  .hp(()=>   safe(1800 + state.x*2400, 2200))
+
+// —— 轻帽（空气感）——
+const hats = s("hh*8")
+  .gain(()=> safe(0.05 + state.p*0.08, 0.08))
+  .hp(()=>   safe(5000 + state.x*3500, 5600))
+  .speed(()=> safe(1 + state.x*0.2, 1.08))
+  .pan(()=>  safe((state.x*2-1)*0.35, 0))
+
+// —— 轻微点缀 ——
+const spice = s("[rim ~] [~ cp] ~")
+  .gain(()=> safe(0.04 + state.p*0.08, 0.06))
+  .hp(()=>   safe(2500 + state.x*3000, 3000))
+
+// —— 可视化 ——
+$: stack(kick, snare, hats, spice)
+  ._pianoroll({ cycles: 8, playhead: 0.4 })
+  ._spectrum({ thickness: 2, speed: 0.5 })
+  .gain(0.9)
+`
+  },
   'synth': {
     id: 'synth',
     name: 'Synth Patch',
@@ -740,24 +817,41 @@ function buildStrudelBaseUrl(){
   return 'https://strudel.cc/';
 }
 
+function restoreStrudelToEmbed(){
+  strudelFrame.style.position = 'absolute';
+  strudelFrame.style.inset = '0';
+  strudelFrame.style.width = '100%';
+  strudelFrame.style.height = '100%';
+  strudelFrame.style.border = '0';
+  strudelFrame.style.borderRadius = '0';
+  strudelFrame.style.zIndex = '';
+}
+
 function loadPatch(patchId, reload = true){
   const patch = patches[patchId];
   if(!patch) return;
+
   const wasSame = currentPatch && currentPatch.id === patch.id;
   currentPatch = patch;
+
   setActivePreset(patch.id);
   presetName.textContent = patch.name;
   presetDesc.textContent = patch.description;
 
-  if(!wasSame || reload || !strudelFrame.src.includes('strudel.cc')){
-    // 添加加载状态
-    setStatus('loading');
+  // 每次切预设都先把 iframe 放回下方 embed，保证能点到 Run
+  restoreStrudelToEmbed();
+  strudelFrame.style.pointerEvents = 'auto';
 
-    // 首先尝试加载预设代码URL
-    const targetUrl = buildStrudelUrl(patch.code);
-    loadWithFallback(targetUrl, patch);
+  // 只在必要时重载，避免丢失已解锁音频
+  const targetUrl = buildStrudelUrl(patch.code);
+  const needReload = !strudelFrame.src.includes('strudel.cc') || reload || !wasSame;
+  if(needReload){
+    strudelFrame.src = targetUrl;
   }
+
   pad.classList.remove('is-active');
+  setStatus('ready');
+  statusText.textContent = 'Press Run ▶︎'; // 明确提示要按 Run
 }
 
 function loadWithFallback(primaryUrl, patch) {
@@ -891,6 +985,9 @@ function sendPen(x, y, pressure){
     target.postMessage({ type: 'pen', x, y, pressure, t: performance.now() }, 'https://strudel.cc');
     console.log('Pen data sent:', { x, y, pressure });
 
+    // 统计发出的 pen 事件
+    diagPen++; dPen();
+
     // 触发可视化效果
     if(vizContainer) {
       updateVisualization(x, y, pressure);
@@ -967,6 +1064,30 @@ function createCircle(x, y, pressure) {
   }, 4000);
 }
 
+// 音频能量探测功能
+function startLevelProbe(){
+  if(meterTimer) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) return;
+  meterCtx = meterCtx || new AC();
+  if(meterCtx.state === 'suspended') meterCtx.resume();
+
+  const analyser = meterCtx.createAnalyser();
+  analyser.fftSize = 512;
+  const src = meterCtx.createOscillator();
+  const gain = meterCtx.createGain();
+  gain.gain.value = 0.00001;
+  src.connect(gain).connect(analyser).connect(meterCtx.destination);
+  src.start();
+
+  const buf = new Uint8Array(analyser.frequencyBinCount);
+  meterTimer = setInterval(()=>{
+    analyser.getByteFrequencyData(buf);
+    const peak = Math.max(...buf);
+    if(peak > 1){ diagAudio = peak; dAud(); }
+  }, 150);
+}
+
 // 动画循环
 function animateVisualization() {
   if(!vizContainer) return;
@@ -1003,7 +1124,7 @@ function pointerToCanvas(event){
   const y = (event.clientY - rect.top) / rect.height;
 
   // 多系统压力检测
-  let pressure = 0.35; // 默认值
+  let pressure = 0.4; // 默认值（提高敏感度）
 
   if (typeof event.pressure === 'number') {
     pressure = event.pressure;
@@ -1028,17 +1149,9 @@ function pointerToCanvas(event){
   };
 }
 
-function isSupportedPointer(event){
-  // 支持更多输入类型
-  const supportedTypes = ['pen', 'touch', 'mouse'];
-
-  // 如果设备报告了 pressure 或 force，则认为是支持的输入
-  if (typeof event.pressure === 'number' && event.pressure > 0) return true;
-  if (event.force && typeof event.force === 'number' && event.force > 0) return true;
-  if (event.mozPressure !== undefined && event.mozPressure > 0) return true;
-  if (event.webkitForce !== undefined && event.webkitForce > 0) return true;
-
-  return supportedTypes.includes(event.pointerType);
+function isSupportedPointer(e){
+  // 某些 iPad/Safari 会把 Pencil 当 'mouse'
+  return e.pointerType === 'pen' || e.pointerType === 'touch' || e.pointerType === 'mouse';
 }
 
 // 跨浏览器事件处理
@@ -1080,23 +1193,15 @@ const handlePointerDown = (event) => {
   updateInteractionState();
 };
 
-const handlePointerMove = (event) => {
-  if(!isSupportedPointer(event)) return;
-
-  // 只在按下时响应（减少不必要的处理）
-  const isPressed = event.buttons !== undefined ?
-    (event.buttons & 1) === 1 : // 鼠标左键
-    (event.type === 'touchmove' || event.type === 'pointermove');
-
-  if(!isPressed) return;
-
-  const data = pointerToCanvas(event);
-  drawDot(data.x, data.y, data.pressure);
+const handlePointerMove = (e) => {
+  if(!isSupportedPointer(e)) return;
+  const d = pointerToCanvas(e);
+  // 旧 Pencil/某些浏览器 move 时 pressure 恒为 0，这里兜底
+  if(!(typeof e.pressure === 'number') || e.pressure === 0) d.pressure = 0.4;
+  drawDot(d.x, d.y, d.pressure);
   const now = performance.now();
-
-  // 限制发送频率以提高性能
-  if(now - lastSent > 16) {
-    sendPen(data.x, data.y, data.pressure);
+  if(now - lastSent > 16){
+    sendPen(d.x, d.y, d.pressure);
     lastSent = now;
   }
   updateInteractionState();
@@ -1118,6 +1223,10 @@ addCrossBrowserListeners(pad, handlePointerDown, handlePointerMove, handlePointe
 openButton.addEventListener('click', () => {
   gate.setAttribute('hidden', 'true');
   setStatus('loading');
+
+  // 启动音频能量探测
+  startLevelProbe();
+  diagRun='—'; dRun();
 
   // 确保Strudel已正确加载
   const checkStrudelReady = () => {
@@ -1162,7 +1271,7 @@ presetButtons.forEach(btn => {
 window.addEventListener('resize', resizeCanvas, { passive: true });
 window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 280));
 
-loadPatch('tusic', false);
+loadPatch('kanye-v4', false);
 resizeCanvas();
 clearCanvas();
 
